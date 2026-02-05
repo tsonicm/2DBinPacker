@@ -140,7 +140,7 @@ The application uses a 10-color palette for client identification:
 
 ## 🔄 Version History
 
-### Current Version (v3)
+### Version 1.0 (Current)
 - Client-based package grouping and segregation
 - Smart collision prevention with sliding and snapping
 - Dynamic font scaling for high zoom levels
@@ -148,6 +148,10 @@ The application uses a 10-color palette for client identification:
 - Enhanced guide lines (80cm height, 2m width markers)
 - Integer dimension display throughout
 - 5cm automatic padding on all dimensions
+- Interactive drag, rotate, zoom, and pan controls
+- PDF export functionality (A4 format)
+- Bulk import via tab-separated format
+- Reference number system (EAN13 last 6 digits)
 
 ## 📄 License
 
