@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Bin Packing Visualizer</title>
+    <style>
+        :root {
+            --color-bg-primary: #f5f5f5;
+            --color-text-primary: #1f2937;
+            --color-text-secondary: #6b7280;
+            --color-primary: #3b82f6;
+            --color-primary-hover: #2563eb;
+            --color-success: #10b981;
+            --color-error: #ef4444;
+            --color-border: #e5e7eb;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            padding: var(--spacing-md);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text-primary);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: var(--spacing-lg);
+            height: calc(100vh - 120px);
+        }
+
+        .panel {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            padding: var(--spacing-lg);
+        }
+
+        .panel.scrollable {
+            overflow-y: auto;
+            max-height: 100%;
+        }
+
+        .panel.fixed {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text-primary);
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-md);
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: var(--color-text-secondary);
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input[type="number"]:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .button-primary {
+            background: var(--color-primary);
+            color: white;
+            width: 100%;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .button-primary:hover {
+            background: var(--color-primary-hover);
+        }
+
+        .button-danger {
+            background: var(--color-error);
+            color: white;
+            width: 100%;
+        }
+
+        .button-danger:hover {
+            background: #dc2626;
+        }
+
+        .button-success {
+            background: var(--color-success);
+            color: white;
+            width: 100%;
+        }
+
+        .button-success:hover {
+            background: #059669;
+        }
+
+        .button-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .package-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+        }
+
+        .package-item {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .package-item:last-child {
+            border-bottom: none;
+        }
+
+        .package-info {
+            flex: 1;
+        }
+
+        .package-id {
+            font-weight: 600;
+            color: var(--color-primary);
+            margin-bottom: 2px;
+        }
+
+        .package-dims {
+            color: var(--color-text-secondary);
+            font-size: 12px;
+        }
+
+        .package-delete {
+            background: var(--color-error);
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: var(--spacing-sm);
+        }
+
+        .package-delete:hover {
+            background: #dc2626;
+        }
+
+        .bin-info {
+            background: #f0f9ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: var(--spacing-md);
+            font-size: 13px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .bin-info label {
+            margin-bottom: 8px;
+        }
+
+        .canvas-container {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            padding: var(--spacing-lg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 600px;
+        }
+
+        #packingCanvas {
+            border: 2px solid var(--color-border);
+            background: #fafafa;
+            cursor: crosshair;
+        }
+
+        .stats {
+            background: #f0f9ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: var(--color-primary);
+            font-size: 13px;
+            margin-top: var(--spacing-md);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+
+        .stat-label {
+            color: var(--color-text-secondary);
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        @media (max-width: 1024px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .canvas-container {
+                min-height: 400px;
+            }
+        }
+
+        .color-legend {
+            font-size: 12px;
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: #f9fafb;
+            border-radius: 6px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-right: 8px;
+        }
+
+        .empty-state {
+            color: var(--color-text-secondary);
+            text-align: center;
+            padding: var(--spacing-lg);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>2D Bin Packing Visualizer</h1>
+
+        <div class="layout">
+            <!-- Left Panel: Input Controls -->
+            <div class="panel scrollable">
+                <!-- Bin Dimensions -->
+                <div class="section">
+                    <h2>Bin Dimensions (cm)</h2>
+                    <div class="bin-info">
+                        <div class="form-group">
+                            <label for="binWidth">Width (cm)</label>
+                            <input type="number" id="binWidth" min="1" value="100" />
+                        </div>
+                        <div class="form-group">
+                            <label for="binHeight">Height (cm)</label>
+                            <input type="number" id="binHeight" min="1" value="100" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Package -->
+                <div class="section">
+                    <h2>Add Package (cm)</h2>
+                    <div class="form-group">
+                        <label for="packageRefNo">Reference Number (last 6 digits of EAN13)</label>
+                        <input type="text" id="packageRefNo" placeholder="e.g., 123456" />
+                    </div>
+                    <div class="form-group">
+                        <label for="packageLength">Length (cm)</label>
+                        <input type="number" id="packageLength" min="0.1" step="0.1" placeholder="e.g., 50" />
+                    </div>
+                    <div class="form-group">
+                        <label for="packageWidth">Width (cm)</label>
+                        <input type="number" id="packageWidth" min="0.1" step="0.1" placeholder="e.g., 30" />
+                    </div>
+                    <div class="form-group">
+                        <label for="packageComment">Comment (optional)</label>
+                        <input type="text" id="packageComment" placeholder="e.g., Fragile" />
+                    </div>
+                    <div class="form-group">
+                        <label for="packageClient">Client (optional)</label>
+                        <input type="text" id="packageClient" placeholder="e.g., Client A" />
+                    </div>
+                    <button class="button button-primary" onclick="addPackage()">Add Package</button>
+                    <button class="button button-danger" onclick="clearPackages()">Clear All</button>
+                    
+                    <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--color-border);">
+                        <label for="bulkPackages">Bulk Insert (refNo [tab] LxW [tab] comment [tab] client)</label>
+                        <textarea id="bulkPackages" placeholder="123456&#9;50x30&#9;Fragile&#9;ClientA&#10;789012&#9;40*25&#9;&#9;ClientB&#10;345678&#9;60x35&#9;Heavy&#9;ClientA" style="width: 100%; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 13px; font-family: monospace; min-height: 80px; resize: vertical; margin-top: 4px;"></textarea>
+                        <button class="button button-primary" onclick="bulkAddPackages()" style="margin-top: 8px;">Add from List</button>
+                    </div>
+                </div>
+
+                <!-- Package List -->
+                <div class="section">
+                    <h2>Packages (<span id="packageCount">0</span>)</h2>
+                    <div id="packageListContainer">
+                        <div class="empty-state">No packages added yet</div>
+                    </div>
+                </div>
+
+                <!-- Packing Button -->
+                <div class="section">
+                    <button class="button button-success" onclick="solvePacking()" style="font-size: 16px; padding: 12px;">Visualize Packing</button>
+                </div>
+
+                <!-- Export -->
+                <div class="section">
+                    <button class="button button-success" onclick="exportToPDF()" style="font-size: 14px; padding: 10px;">Export to PDF (A4)</button>
+                </div>
+
+                <!-- Statistics -->
+                <div class="section">
+                    <h2>Statistics</h2>
+                    <div class="stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Bin Area:</span>
+                            <span class="stat-value" id="binArea">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Package Area:</span>
+                            <span class="stat-value" id="totalPackageArea">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Utilization:</span>
+                            <span class="stat-value" id="utilizationRate">0%</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Packages Packed:</span>
+                            <span class="stat-value" id="packedCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Color Legend -->
+                <div class="section">
+                    <h2>Legend</h2>
+                    <div class="color-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #3b82f6;"></div>
+                            <span>80cm Guide Lines (Height)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ef4444;"></div>
+                            <span>2m Guide Lines (Width)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: linear-gradient(to right, #3b82f6, #10b981, #f59e0b, #ef4444);"></div>
+                            <span>Packages (Color by Client)</span>
+                        </div>
+                        <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-sm); border-top: 1px solid var(--color-border); font-size: 11px; color: var(--color-text-secondary);">
+                            <div style="margin-bottom: 4px;"><strong>Controls:</strong></div>
+                            <div>• Drag to move packages</div>
+                            <div>• <strong>Shift + Drag:</strong> Prevent overlap</div>
+                            <div style="padding-left: 12px; color: #6b7280;">- Slides along obstacles</div>
+                            <div style="padding-left: 12px; color: #6b7280;">- Snaps to nearest empty space</div>
+                            <div>• Double-click to rotate</div>
+                            <div>• Press 'R' key to rotate (hover)</div>
+                            <div>• Scroll to zoom (50%-500%)</div>
+                            <div>• Drag empty space to pan</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Visualization -->
+            <div class="panel fixed">
+                <h2 style="padding: 0 var(--spacing-lg); padding-top: var(--spacing-lg);">Packing Visualization</h2>
+                <div class="canvas-container" style="position: relative; flex: 1; overflow: hidden; padding: var(--spacing-lg);">
+                    <div class="canvas-wrapper" id="canvasWrapper" style="position: relative; width: 100%; height: 100%; overflow: hidden;">
+                        <canvas id="packingCanvas" style="display: block; width: 100%; height: 100%;"></canvas>
+                    </div>
+                    <div class="zoom-controls" style="position: absolute; bottom: 20px; right: 20px; background: white; border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; z-index: 10; display: flex; gap: 8px; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <button class="zoom-button" onclick="zoomOut()" style="padding: 8px 12px; background: var(--color-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">−</button>
+                        <div class="zoom-info" style="text-align: center; min-width: 80px;">
+                            <span id="zoomLevel" style="display: block; font-weight: 600;">100%</span>
+                            <small style="color: var(--color-text-secondary); font-size: 11px;">Use scroll</small>
+                        </div>
+                        <button class="zoom-button" onclick="zoomIn()" style="padding: 8px 12px; background: var(--color-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">+</button>
+                        <button class="zoom-button" onclick="resetZoom()" style="padding: 8px 12px; background: var(--color-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Reset</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        // State
+        let packages = [];
+        let packedPackages = [];
+        let packageIdCounter = 0;
+        
+        // Zoom and Pan state
+        let zoomLevel = 1;
+        let panX = 0;
+        let panY = 0;
+        const minZoom = 0.5;
+        const maxZoom = 5;
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        
+        // Drag state for moving packages
+        let isDraggingPackage = false;
+        let draggedPackageIndex = -1;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        let hoveredPackageIndex = -1;
+        let isShiftPressed = false;
+        
+        // Client color mapping
+        const clientColors = [
+            '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+            '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
+        ];
+        let clientColorMap = {};
+        
+        // Get color for a client
+        function getClientColor(client) {
+            if (!client) return '#3b82f6'; // Default color
+            if (!clientColorMap[client]) {
+                const usedColors = Object.values(clientColorMap);
+                const availableColor = clientColors.find(c => !usedColors.includes(c)) || clientColors[Object.keys(clientColorMap).length % clientColors.length];
+                clientColorMap[client] = availableColor;
+            }
+            return clientColorMap[client];
+        }
+
+        // Helper: Extract and format reference number from EAN13
+        function formatRefNo(input) {
+            if (!input) return '';
+            // Extract last 6 digits
+            const digits = input.replace(/\D/g, '').slice(-6);
+            // Trim leading zeros
+            return digits.replace(/^0+/, '') || '0';
+        }
+
+        // Helper: Convert cm to pixels for canvas
+        function cmToPixels(cm, canvasSize = 400) {
+            const binCm = Math.max(
+                parseFloat(document.getElementById('binWidth').value),
+                parseFloat(document.getElementById('binHeight').value)
+            );
+            return (cm / binCm) * canvasSize;
+        }
+
+        // Add a package to the list
+        function addPackage() {
+            const refNoInput = document.getElementById('packageRefNo').value;
+            const length = parseFloat(document.getElementById('packageLength').value);
+            const width = parseFloat(document.getElementById('packageWidth').value);
+            const comment = document.getElementById('packageComment').value.trim();
+            const client = document.getElementById('packageClient').value.trim();
+
+            if (!length || !width || length <= 0 || width <= 0) {
+                alert('Please enter valid dimensions');
+                return;
+            }
+
+            const refNo = formatRefNo(refNoInput);
+            if (!refNo) {
+                alert('Please enter a valid reference number');
+                return;
+            }
+
+            packages.push({
+                id: packageIdCounter++,
+                refNo: refNo,
+                length: length + 5,
+                width: width + 5,
+                comment: comment,
+                client: client
+            });
+
+            document.getElementById('packageRefNo').value = '';
+            document.getElementById('packageLength').value = '';
+            document.getElementById('packageWidth').value = '';
+            document.getElementById('packageComment').value = '';
+            document.getElementById('packageClient').value = '';
+            updatePackageList();
+            updateStatistics();
+        }
+        
+        // Bulk add packages from textarea
+        function bulkAddPackages() {
+            const bulkText = document.getElementById('bulkPackages').value.trim();
+            if (!bulkText) {
+                alert('Please enter package data');
+                return;
+            }
+            
+            const lines = bulkText.split('\n');
+            let addedCount = 0;
+            let errorCount = 0;
+            
+            lines.forEach((line, index) => {
+                line = line.trim();
+                if (!line) return; // Skip empty lines
+                
+                // Split by tab first
+                const parts = line.split('\t').map(p => p.trim()).filter(p => p);
+                
+                if (parts.length >= 2) {
+                    const refNoInput = parts[0];
+                    const dimString = parts[1];
+                    const comment = parts.length >= 3 ? parts[2] : '';
+                    const client = parts.length >= 4 ? parts[3].trim() : '';
+                    
+                    // Parse dimensions (support x or *)
+                    const dimMatch = dimString.match(/([\d.]+)\s*[x*]\s*([\d.]+)/i);
+                    
+                    if (dimMatch) {
+                        const length = parseFloat(dimMatch[1]);
+                        const width = parseFloat(dimMatch[2]);
+                        const refNo = formatRefNo(refNoInput);
+                        
+                        if (refNo && length > 0 && width > 0) {
+                            packages.push({
+                                id: packageIdCounter++,
+                                refNo: refNo,
+                                length: length + 5,
+                                width: width + 5,
+                                comment: comment,
+                                client: client
+                            });
+                            addedCount++;
+                        } else {
+                            errorCount++;
+                        }
+                    } else {
+                        errorCount++;
+                    }
+                } else {
+                    errorCount++;
+                }
+            });
+            
+            document.getElementById('bulkPackages').value = '';
+            updatePackageList();
+            updateStatistics();
+            
+            if (addedCount > 0) {
+                alert(`Added ${addedCount} package(s)` + (errorCount > 0 ? `. ${errorCount} line(s) had errors and were skipped.` : ''));
+            } else if (errorCount > 0) {
+                alert('No valid packages found. Format: refNo [tab] LxW [tab] comment [tab] client (one per line)');
+            }
+        }
+
+        // Remove a package
+        function removePackage(id) {
+            packages = packages.filter(p => p.id !== id);
+            updatePackageList();
+            updateStatistics();
+        }
+
+        // Edit a package
+        function editPackage(id) {
+            const pkg = packages.find(p => p.id === id);
+            if (!pkg) return;
+
+            // Create a formatted prompt with all fields
+            const currentValues = `RefNo: ${pkg.refNo}\nLength: ${pkg.length}\nWidth: ${pkg.width}\nComment: ${pkg.comment || ''}\nClient: ${pkg.client || ''}`;
+            const instructions = 'Edit package (format: refNo, length, width, comment, client)';
+            const defaultValue = `${pkg.refNo}, ${pkg.length}, ${pkg.width}, ${pkg.comment || ''}, ${pkg.client || ''}`;
+            
+            const input = prompt(`${instructions}\n\nCurrent values:\n${currentValues}\n\nEnter new values (comma-separated):`, defaultValue);
+            
+            if (input === null) return; // Cancelled
+
+            // Parse the input
+            const parts = input.split(',').map(p => p.trim());
+            
+            if (parts.length < 3) {
+                alert('Invalid format. Please enter: refNo, length, width, comment, client (comment and client are optional)');
+                return;
+            }
+
+            const newRefNo = parts[0];
+            const newLength = parts[1];
+            const newWidth = parts[2];
+            const newComment = parts.length >= 4 ? parts[3].trim() : '';
+            const newClient = parts.length >= 5 ? parts.slice(4).join(',').trim() : '';
+
+            const formattedRefNo = formatRefNo(newRefNo);
+            const parsedLength = parseFloat(newLength);
+            const parsedWidth = parseFloat(newWidth);
+
+            if (!formattedRefNo || !parsedLength || !parsedWidth || parsedLength <= 0 || parsedWidth <= 0) {
+                alert('Invalid values entered. Package not updated.');
+                return;
+            }
+
+            pkg.refNo = formattedRefNo;
+            pkg.length = parsedLength + 5;
+            pkg.width = parsedWidth + 5;
+            pkg.comment = newComment;
+            pkg.client = newClient;
+
+            updatePackageList();
+            updateStatistics();
+        }
+
+        // Clear all packages
+        function clearPackages() {
+            packages = [];
+            packedPackages = [];
+            packageIdCounter = 0;
+            updatePackageList();
+            updateStatistics();
+            clearCanvas();
+        }
+
+        // Update the package list display
+        function updatePackageList() {
+            const container = document.getElementById('packageListContainer');
+            document.getElementById('packageCount').textContent = packages.length;
+
+            if (packages.length === 0) {
+                container.innerHTML = '<div class="empty-state">No packages added yet</div>';
+                return;
+            }
+
+            container.innerHTML = packages.map(pkg => `
+                <div class="package-item">
+                    <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                        ${pkg.client ? `<div style="width: 12px; height: 12px; border-radius: 2px; background: ${getClientColor(pkg.client)}; flex-shrink: 0;"></div>` : ''}
+                        <div class="package-info">
+                            <div class="package-id">${pkg.refNo || 'N/A'}${pkg.client ? ` (${pkg.client})` : ''}</div>
+                            <div class="package-dims">${Math.round(pkg.length)}×${Math.round(pkg.width)}</div>
+                            ${pkg.comment ? `<div class="package-dims" style="color: #3b82f6; margin-top: 2px;">${pkg.comment}</div>` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="package-delete" onclick="editPackage(${pkg.id})" style="background: var(--color-primary);">Edit</button>
+                        <button class="package-delete" onclick="removePackage(${pkg.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            const binWidth = parseFloat(document.getElementById('binWidth').value) || 0;
+            const binHeight = parseFloat(document.getElementById('binHeight').value) || 0;
+            const binArea = binWidth * binHeight;
+
+            const totalPackageArea = packages.reduce((sum, pkg) => {
+                const pkgCm2 = pkg.length * pkg.width;
+                return sum + pkgCm2;
+            }, 0);
+
+            const utilization = binArea > 0 ? ((totalPackageArea / binArea) * 100) : 0;
+
+            // Format areas - use m² if >= 10000 cm² (1 m²)
+            let binAreaText, packageAreaText;
+            if (binArea >= 10000) {
+                binAreaText = `${(binArea / 10000).toFixed(2)} m²`;
+            } else {
+                binAreaText = `${Math.round(binArea)} cm²`;
+            }
+            
+            if (totalPackageArea >= 10000) {
+                packageAreaText = `${(totalPackageArea / 10000).toFixed(2)} m²`;
+            } else {
+                packageAreaText = `${Math.round(totalPackageArea)} cm²`;
+            }
+
+            document.getElementById('binArea').textContent = binAreaText;
+            document.getElementById('totalPackageArea').textContent = packageAreaText;
+            document.getElementById('utilizationRate').textContent = `${utilization.toFixed(1)}%`;
+            document.getElementById('packedCount').textContent = packedPackages.length;
+        }
+
+        // 2D Bin Packing Algorithm (Guillotine with Best Area Fit)
+        function packItems() {
+            const binWidth = parseFloat(document.getElementById('binWidth').value);
+            const binHeight = parseFloat(document.getElementById('binHeight').value);
+
+            if (!binWidth || !binHeight || packages.length === 0) {
+                return [];
+            }
+
+            // Group packages by client
+            const clientGroups = {};
+            packages.forEach(pkg => {
+                const clientKey = pkg.client || '_no_client';
+                if (!clientGroups[clientKey]) {
+                    clientGroups[clientKey] = [];
+                }
+                clientGroups[clientKey].push({
+                    id: pkg.id,
+                    refNo: pkg.refNo,
+                    w: pkg.length,
+                    h: pkg.width,
+                    client: pkg.client,
+                    comment: pkg.comment
+                });
+            });
+
+            // Sort each group by area (largest first)
+            Object.values(clientGroups).forEach(group => {
+                group.sort((a, b) => (b.w * b.h) - (a.w * a.h));
+            });
+
+            const result = [];
+            // Free rectangles - start with the entire bin
+            const freeRects = [{ x: 0, y: 0, w: binWidth, h: binHeight }];
+            
+            // Process each client group separately
+            Object.keys(clientGroups).forEach(clientKey => {
+                const itemsForPacking = clientGroups[clientKey];
+
+                // Try to place each item in this client group
+                itemsForPacking.forEach(item => {
+                let bestRect = null;
+                let bestRectIndex = -1;
+                let rotated = false;
+                let bestAreaFit = Infinity;
+
+                // Find the best free rectangle for this item
+                for (let i = 0; i < freeRects.length; i++) {
+                    const rect = freeRects[i];
+
+                    // Try normal orientation
+                    if (item.w <= rect.w && item.h <= rect.h) {
+                        const areaFit = rect.w * rect.h - item.w * item.h;
+                        if (areaFit < bestAreaFit) {
+                            bestRect = rect;
+                            bestRectIndex = i;
+                            rotated = false;
+                            bestAreaFit = areaFit;
+                        }
+                    }
+
+                    // Try rotated orientation
+                    if (item.h <= rect.w && item.w <= rect.h) {
+                        const areaFit = rect.w * rect.h - item.w * item.h;
+                        if (areaFit < bestAreaFit) {
+                            bestRect = rect;
+                            bestRectIndex = i;
+                            rotated = true;
+                            bestAreaFit = areaFit;
+                        }
+                    }
+                }
+
+                    // If we found a place, insert the item
+                    if (bestRect) {
+                        const newItem = {
+                            id: item.id,
+                            refNo: item.refNo,
+                            client: item.client,
+                            comment: item.comment,
+                            x: bestRect.x,
+                            y: bestRect.y,
+                            w: rotated ? item.h : item.w,
+                            h: rotated ? item.w : item.h
+                        };
+                        result.push(newItem);
+
+                    // Split the free rectangle using guillotine cut
+                    // Remove the used rectangle
+                    freeRects.splice(bestRectIndex, 1);
+
+                    // Create new free rectangles from the remaining space
+                    // Right rectangle
+                    if (newItem.x + newItem.w < bestRect.x + bestRect.w) {
+                        freeRects.push({
+                            x: newItem.x + newItem.w,
+                            y: bestRect.y,
+                            w: bestRect.w - newItem.w,
+                            h: bestRect.h
+                        });
+                    }
+
+                    // Bottom rectangle
+                    if (newItem.y + newItem.h < bestRect.y + bestRect.h) {
+                        freeRects.push({
+                            x: bestRect.x,
+                            y: newItem.y + newItem.h,
+                            w: newItem.w,
+                            h: bestRect.h - newItem.h
+                        });
+                    }
+
+                        // Remove redundant rectangles and merge adjacent ones
+                        pruneAndMergeFreeRects(freeRects);
+                    }
+                });
+            });
+
+            return result;
+        }
+
+        // Helper function to remove redundant free rectangles
+        function pruneAndMergeFreeRects(freeRects) {
+            // Remove rectangles that are completely inside other rectangles
+            for (let i = freeRects.length - 1; i >= 0; i--) {
+                for (let j = freeRects.length - 1; j >= 0; j--) {
+                    if (i !== j) {
+                        if (isRectInsideRect(freeRects[i], freeRects[j])) {
+                            freeRects.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check if rect1 is completely inside rect2
+        function isRectInsideRect(rect1, rect2) {
+            return rect1.x >= rect2.x &&
+                   rect1.y >= rect2.y &&
+                   rect1.x + rect1.w <= rect2.x + rect2.w &&
+                   rect1.y + rect1.h <= rect2.y + rect2.h;
+        }
+
+        // Find closest valid position for a package
+        function findClosestValidPosition(targetX, targetY, w, h, excludeIndex) {
+            const binWidth = parseFloat(document.getElementById('binWidth').value);
+            const binHeight = parseFloat(document.getElementById('binHeight').value);
+            
+            // If target position is valid, return it
+            if (!wouldOverlap(targetX, targetY, w, h, excludeIndex)) {
+                return { x: targetX, y: targetY, found: true };
+            }
+            
+            // Search in expanding circles around the target position
+            const maxSearchRadius = 150; // cm
+            const step = 2; // cm - smaller step for more precise searching
+            let bestDistance = Infinity;
+            let bestX = targetX;
+            let bestY = targetY;
+            let found = false;
+            
+            // Search through ALL radii to find the absolute closest position
+            for (let radius = step; radius <= maxSearchRadius; radius += step) {
+                const positions = [];
+                
+                // Sample positions around the circle
+                const samples = Math.max(16, Math.ceil(radius / 3));
+                for (let i = 0; i < samples; i++) {
+                    const angle = (i / samples) * Math.PI * 2;
+                    const testX = targetX + Math.cos(angle) * radius;
+                    const testY = targetY + Math.sin(angle) * radius;
+                    
+                    // Clamp to bin boundaries
+                    const clampedX = Math.max(0, Math.min(testX, binWidth - w));
+                    const clampedY = Math.max(0, Math.min(testY, binHeight - h));
+                    
+                    positions.push({ x: clampedX, y: clampedY });
+                }
+                
+                // Check each position
+                for (const pos of positions) {
+                    if (pos.x >= 0 && pos.y >= 0 && pos.x + w <= binWidth && pos.y + h <= binHeight) {
+                        if (!wouldOverlap(pos.x, pos.y, w, h, excludeIndex)) {
+                            const distance = Math.sqrt(
+                                Math.pow(pos.x - targetX, 2) + 
+                                Math.pow(pos.y - targetY, 2)
+                            );
+                            if (distance < bestDistance) {
+                                bestDistance = distance;
+                                bestX = pos.x;
+                                bestY = pos.y;
+                                found = true;
+                            }
+                        }
+                    }
+                }
+                
+                // Continue searching all radii to ensure we find the absolute closest position
+            }
+            
+            return { x: bestX, y: bestY, found: found };
+        }
+
+        // Check if two rectangles overlap
+        function rectanglesOverlap(rect1, rect2) {
+            return !(rect1.x + rect1.w <= rect2.x ||
+                     rect2.x + rect2.w <= rect1.x ||
+                     rect1.y + rect1.h <= rect2.y ||
+                     rect2.y + rect2.h <= rect1.y);
+        }
+
+        // Check if package at given position would overlap with other packages
+        function wouldOverlap(x, y, w, h, excludeIndex) {
+            const testRect = { x, y, w, h };
+            for (let i = 0; i < packedPackages.length; i++) {
+                if (i === excludeIndex) continue;
+                const pkg = packedPackages[i];
+                const pkgRect = { x: pkg.x, y: pkg.y, w: pkg.w, h: pkg.h };
+                if (rectanglesOverlap(testRect, pkgRect)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Get package at mouse position
+        function getPackageAtPosition(mouseX, mouseY, offsetX, offsetY, basePixelPerCm) {
+            // Adjust for zoom and pan
+            const adjustedX = (mouseX - panX) / zoomLevel;
+            const adjustedY = (mouseY - panY) / zoomLevel;
+            
+            // Check each packed package (in reverse to prioritize top packages)
+            for (let i = packedPackages.length - 1; i >= 0; i--) {
+                const pkg = packedPackages[i];
+                const pkgX = offsetX + pkg.x * basePixelPerCm;
+                const pkgY = offsetY + pkg.y * basePixelPerCm;
+                const pkgW = pkg.w * basePixelPerCm;
+                const pkgH = pkg.h * basePixelPerCm;
+                
+                if (adjustedX >= pkgX && adjustedX <= pkgX + pkgW &&
+                    adjustedY >= pkgY && adjustedY <= pkgY + pkgH) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        
+        // Rotate a package 90 degrees
+        function rotatePackage(index) {
+            if (index < 0 || index >= packedPackages.length) return;
+            
+            const pkg = packedPackages[index];
+            const binWidth = parseFloat(document.getElementById('binWidth').value);
+            const binHeight = parseFloat(document.getElementById('binHeight').value);
+            
+            // Swap width and height
+            const newW = pkg.h;
+            const newH = pkg.w;
+            
+            // Check if rotated package still fits in bin at current position
+            if (pkg.x + newW <= binWidth && pkg.y + newH <= binHeight) {
+                pkg.w = newW;
+                pkg.h = newH;
+                drawPacking();
+            } else {
+                // Try to adjust position to fit
+                let newX = pkg.x;
+                let newY = pkg.y;
+                
+                if (pkg.x + newW > binWidth) {
+                    newX = binWidth - newW;
+                }
+                if (pkg.y + newH > binHeight) {
+                    newY = binHeight - newH;
+                }
+                
+                // Only rotate if it fits after adjustment
+                if (newX >= 0 && newY >= 0) {
+                    pkg.w = newW;
+                    pkg.h = newH;
+                    pkg.x = newX;
+                    pkg.y = newY;
+                    drawPacking();
+                } else {
+                    alert('Package cannot be rotated - it would not fit in the bin');
+                }
+            }
+        }
+
+        // Solve and visualize
+        function solvePacking() {
+            if (packages.length === 0) {
+                alert('Please add at least one package');
+                return;
+            }
+
+            packedPackages = packItems();
+            drawPacking();
+
+            // Update packed count
+            document.getElementById('packedCount').textContent = packedPackages.length;
+        }
+
+        // Draw the packing visualization
+        function drawPacking() {
+            const canvas = document.getElementById('packingCanvas');
+            const wrapper = document.getElementById('canvasWrapper');
+            const ctx = canvas.getContext('2d');
+
+            const binWidth = parseFloat(document.getElementById('binWidth').value);
+            const binHeight = parseFloat(document.getElementById('binHeight').value);
+
+            // Get available space in the container
+            const containerWidth = wrapper.clientWidth;
+            const containerHeight = wrapper.clientHeight;
+            
+            // Calculate margins
+            const margin = 80;
+            const availableWidth = containerWidth - margin;
+            const availableHeight = containerHeight - margin;
+            
+            // Calculate scale to fit the bin in available space
+            const scaleX = availableWidth / binWidth;
+            const scaleY = availableHeight / binHeight;
+            const basePixelPerCm = Math.min(scaleX, scaleY, 30); // Cap at 30 for very small bins
+            
+            const pixelWidth = binWidth * basePixelPerCm;
+            const pixelHeight = binHeight * basePixelPerCm;
+
+            // Set canvas size to match container
+            canvas.width = containerWidth;
+            canvas.height = containerHeight;
+            
+            // Center the bin in the canvas
+            const offsetX = (containerWidth - pixelWidth - margin) / 2 + margin / 2;
+            const offsetY = (containerHeight - pixelHeight - margin) / 2 + margin / 2;
+
+            // Apply zoom and pan transformation
+            ctx.save();
+            ctx.translate(panX, panY);
+            ctx.scale(zoomLevel, zoomLevel);
+
+            // Background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw bin border
+            ctx.strokeStyle = '#1f2937';
+            ctx.lineWidth = 2 / zoomLevel;
+            ctx.strokeRect(offsetX, offsetY, pixelWidth, pixelHeight);
+
+            // Draw grid
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 0.5 / zoomLevel;
+            const gridStep = 10 * basePixelPerCm;
+            for (let i = 0; i <= binWidth; i += 10) {
+                const x = offsetX + (i * basePixelPerCm);
+                ctx.beginPath();
+                ctx.moveTo(x, offsetY);
+                ctx.lineTo(x, offsetY + pixelHeight);
+                ctx.stroke();
+            }
+            for (let i = 0; i <= binHeight; i += 10) {
+                const y = offsetY + (i * basePixelPerCm);
+                ctx.beginPath();
+                ctx.moveTo(offsetX, y);
+                ctx.lineTo(offsetX + pixelWidth, y);
+                ctx.stroke();
+            }
+
+            // Draw 80cm indicators for height/length (dotted)
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 1.5 / zoomLevel;
+            ctx.setLineDash([5 / zoomLevel, 5 / zoomLevel]);
+            for (let i = 80; i <= binHeight; i += 80) {
+                // Skip if within 10cm of the border
+                if (binHeight - i < 10) continue;
+                
+                const y = offsetY + (i * basePixelPerCm);
+                ctx.beginPath();
+                ctx.moveTo(offsetX, y);
+                ctx.lineTo(offsetX + pixelWidth, y);
+                ctx.stroke();
+            }
+            
+            // Draw 2m (200cm) indicators for width only (dotted)
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2 / zoomLevel;
+            ctx.setLineDash([5 / zoomLevel, 5 / zoomLevel]);
+            for (let i = 200; i <= binWidth; i += 200) {
+                const x = offsetX + (i * basePixelPerCm);
+                ctx.beginPath();
+                ctx.moveTo(x, offsetY);
+                ctx.lineTo(x, offsetY + pixelHeight);
+                ctx.stroke();
+                
+                // Label
+                ctx.fillStyle = '#ef4444';
+                ctx.font = `bold ${10 / zoomLevel}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillText(`${i/100}`, x, offsetY - 5 / zoomLevel);
+            }
+            
+            // Reset line dash for subsequent drawing
+            ctx.setLineDash([]);
+
+            // Draw packed items
+            packedPackages.forEach((item, index) => {
+                const x = offsetX + item.x * basePixelPerCm;
+                const y = offsetY + item.y * basePixelPerCm;
+                const width = item.w * basePixelPerCm;
+                const height = item.h * basePixelPerCm;
+
+                // Get client-specific color
+                const clientColor = getClientColor(item.client);
+                
+                // Background
+                ctx.fillStyle = clientColor;
+                ctx.fillRect(x, y, width, height);
+
+                // Border - darker version of the same color
+                const darkerColor = adjustBrightness(clientColor, -30);
+                ctx.strokeStyle = darkerColor;
+                ctx.lineWidth = 2 / zoomLevel;
+                ctx.strokeRect(x, y, width, height);
+
+                // Calculate dynamic font size based on package size and zoom
+                const minDim = Math.min(width, height);
+                const baseFontSize = Math.min(14, minDim / 3);
+                // At high zoom levels, don't scale font down as much
+                const zoomAdjustment = zoomLevel > 2 ? Math.max(0.5, 1 / Math.sqrt(zoomLevel)) : 1 / zoomLevel;
+                const scaledFontSize = Math.max(8, baseFontSize * zoomAdjustment);
+
+                // Package Reference Number
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${scaledFontSize}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(item.refNo || `#${item.id}`, x + width / 2, y + height / 2 - scaledFontSize / 2);
+
+                // Dimensions label
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `${scaledFontSize * 0.8}px Arial`;
+                const dimText = `${Math.round(item.w)}×${Math.round(item.h)}`;
+                ctx.fillText(dimText, x + width / 2, y + height / 2 + scaledFontSize / 2);
+            });
+
+            // Draw unpacked items as legend at bottom
+            const unpackedIds = packages
+                .map(p => p.id)
+                .filter(id => !packedPackages.find(item => item.id === id));
+
+            if (unpackedIds.length > 0) {
+                ctx.fillStyle = '#ef4444';
+                ctx.font = `${12 / zoomLevel}px Arial`;
+                ctx.textAlign = 'left';
+                ctx.fillText(`Unpacked: #${unpackedIds.join(', #')}`, offsetX, offsetY + pixelHeight + 25);
+            }
+
+            // Draw axis labels
+            ctx.fillStyle = '#6b7280';
+            ctx.font = `${12 / zoomLevel}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`${binWidth} cm`, offsetX + pixelWidth / 2, offsetY + pixelHeight + 10);
+
+            ctx.save();
+            ctx.translate(offsetX - 25, offsetY + pixelHeight / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText(`${binHeight} cm`, 0, 0);
+            ctx.restore();
+
+            ctx.restore();
+        }
+
+        // Helper: Adjust color brightness
+        function adjustBrightness(hex, percent) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+            const G = Math.max(0, Math.min(255, (num >> 8 & 0x00FF) + amt));
+            const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+            return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+        }
+
+        // Clear canvas
+        function clearCanvas() {
+            const canvas = document.getElementById('packingCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Zoom functions
+        function zoomIn() {
+            zoomLevel = Math.min(zoomLevel * 1.2, maxZoom);
+            updateZoomLevel();
+            drawPacking();
+        }
+
+        function zoomOut() {
+            zoomLevel = Math.max(zoomLevel / 1.2, minZoom);
+            updateZoomLevel();
+            drawPacking();
+        }
+
+        function resetZoom() {
+            zoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            updateZoomLevel();
+            drawPacking();
+        }
+
+        function updateZoomLevel() {
+            document.getElementById('zoomLevel').textContent = Math.round(zoomLevel * 100) + '%';
+        }
+
+        // Pan and Zoom with mouse
+        const wrapper = document.getElementById('canvasWrapper');
+        const canvas = document.getElementById('packingCanvas');
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (packedPackages.length === 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Get drawing parameters
+            const binWidth = parseFloat(document.getElementById('binWidth').value);
+            const binHeight = parseFloat(document.getElementById('binHeight').value);
+            const containerWidth = wrapper.clientWidth;
+            const containerHeight = wrapper.clientHeight;
+            const margin = 80;
+            const availableWidth = containerWidth - margin;
+            const availableHeight = containerHeight - margin;
+            const scaleX = availableWidth / binWidth;
+            const scaleY = availableHeight / binHeight;
+            const basePixelPerCm = Math.min(scaleX, scaleY, 30);
+            const pixelWidth = binWidth * basePixelPerCm;
+            const pixelHeight = binHeight * basePixelPerCm;
+            const offsetX = (containerWidth - pixelWidth - margin) / 2 + margin / 2;
+            const offsetY = (containerHeight - pixelHeight - margin) / 2 + margin / 2;
+            
+            // Check if clicking on a package
+            const pkgIndex = getPackageAtPosition(mouseX, mouseY, offsetX, offsetY, basePixelPerCm);
+            
+            if (pkgIndex >= 0) {
+                // Start dragging package
+                isDraggingPackage = true;
+                draggedPackageIndex = pkgIndex;
+                const pkg = packedPackages[pkgIndex];
+                const adjustedX = (mouseX - panX) / zoomLevel;
+                const adjustedY = (mouseY - panY) / zoomLevel;
+                dragOffsetX = adjustedX - (offsetX + pkg.x * basePixelPerCm);
+                dragOffsetY = adjustedY - (offsetY + pkg.y * basePixelPerCm);
+                canvas.style.cursor = 'move';
+            } else {
+                // Start panning
+                isPanning = true;
+                panStartX = e.clientX - panX;
+                panStartY = e.clientY - panY;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+        
+        // Double-click to rotate package
+        canvas.addEventListener('dblclick', (e) => {
+            if (packedPackages.length === 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const binWidth = parseFloat(document.getElementById('binWidth').value);
+            const binHeight = parseFloat(document.getElementById('binHeight').value);
+            const containerWidth = wrapper.clientWidth;
+            const containerHeight = wrapper.clientHeight;
+            const margin = 80;
+            const availableWidth = containerWidth - margin;
+            const availableHeight = containerHeight - margin;
+            const scaleX = availableWidth / binWidth;
+            const scaleY = availableHeight / binHeight;
+            const basePixelPerCm = Math.min(scaleX, scaleY, 30);
+            const pixelWidth = binWidth * basePixelPerCm;
+            const pixelHeight = binHeight * basePixelPerCm;
+            const offsetX = (containerWidth - pixelWidth - margin) / 2 + margin / 2;
+            const offsetY = (containerHeight - pixelHeight - margin) / 2 + margin / 2;
+            
+            const pkgIndex = getPackageAtPosition(mouseX, mouseY, offsetX, offsetY, basePixelPerCm);
+            if (pkgIndex >= 0) {
+                rotatePackage(pkgIndex);
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDraggingPackage && draggedPackageIndex >= 0) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // Get drawing parameters
+                const binWidth = parseFloat(document.getElementById('binWidth').value);
+                const binHeight = parseFloat(document.getElementById('binHeight').value);
+                const containerWidth = wrapper.clientWidth;
+                const containerHeight = wrapper.clientHeight;
+                const margin = 80;
+                const availableWidth = containerWidth - margin;
+                const availableHeight = containerHeight - margin;
+                const scaleX = availableWidth / binWidth;
+                const scaleY = availableHeight / binHeight;
+                const basePixelPerCm = Math.min(scaleX, scaleY, 30);
+                const pixelWidth = binWidth * basePixelPerCm;
+                const pixelHeight = binHeight * basePixelPerCm;
+                const offsetX = (containerWidth - pixelWidth - margin) / 2 + margin / 2;
+                const offsetY = (containerHeight - pixelHeight - margin) / 2 + margin / 2;
+                
+                // Update package position
+                const pkg = packedPackages[draggedPackageIndex];
+                const adjustedX = (mouseX - panX) / zoomLevel;
+                const adjustedY = (mouseY - panY) / zoomLevel;
+                
+                // Calculate new position in cm
+                let newX = (adjustedX - offsetX - dragOffsetX) / basePixelPerCm;
+                let newY = (adjustedY - offsetY - dragOffsetY) / basePixelPerCm;
+                
+                // Clamp to bin boundaries
+                newX = Math.max(0, Math.min(newX, binWidth - pkg.w));
+                newY = Math.max(0, Math.min(newY, binHeight - pkg.h));
+                
+                // Check for overlap if Shift is pressed
+                if (isShiftPressed) {
+                    // Try full movement first
+                    if (!wouldOverlap(newX, newY, pkg.w, pkg.h, draggedPackageIndex)) {
+                        pkg.x = newX;
+                        pkg.y = newY;
+                    } else {
+                        // Try sliding along obstacles (one axis at a time)
+                        let movedX = false;
+                        let movedY = false;
+                        
+                        // Try moving only on X axis (keeping Y the same)
+                        if (!wouldOverlap(newX, pkg.y, pkg.w, pkg.h, draggedPackageIndex)) {
+                            pkg.x = newX;
+                            movedX = true;
+                        }
+                        
+                        // Try moving only on Y axis (keeping X the same or using new X if it worked)
+                        const testX = movedX ? newX : pkg.x;
+                        if (!wouldOverlap(testX, newY, pkg.w, pkg.h, draggedPackageIndex)) {
+                            pkg.y = newY;
+                            movedY = true;
+                        }
+                        
+                        // Only snap to closest empty space if the current position is actually overlapping
+                        // (not just blocked by walls on both sides)
+                        if (!movedX && !movedY && wouldOverlap(pkg.x, pkg.y, pkg.w, pkg.h, draggedPackageIndex)) {
+                            const snap = findClosestValidPosition(newX, newY, pkg.w, pkg.h, draggedPackageIndex);
+                            if (snap.found) {
+                                pkg.x = snap.x;
+                                pkg.y = snap.y;
+                            }
+                        }
+                        // If current position is valid and both axes are blocked, just stay in place
+                    }
+                } else {
+                    pkg.x = newX;
+                    pkg.y = newY;
+                }
+                
+                drawPacking();
+            } else if (isPanning) {
+                panX = e.clientX - panStartX;
+                panY = e.clientY - panStartY;
+                drawPacking();
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDraggingPackage = false;
+            draggedPackageIndex = -1;
+            isPanning = false;
+            canvas.style.cursor = 'crosshair';
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDraggingPackage = false;
+            draggedPackageIndex = -1;
+            isPanning = false;
+            canvas.style.cursor = 'crosshair';
+        });
+        
+        // Update cursor on hover to show draggable packages
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDraggingPackage && !isPanning && packedPackages.length > 0) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const binWidth = parseFloat(document.getElementById('binWidth').value);
+                const binHeight = parseFloat(document.getElementById('binHeight').value);
+                const containerWidth = wrapper.clientWidth;
+                const containerHeight = wrapper.clientHeight;
+                const margin = 80;
+                const availableWidth = containerWidth - margin;
+                const availableHeight = containerHeight - margin;
+                const scaleX = availableWidth / binWidth;
+                const scaleY = availableHeight / binHeight;
+                const basePixelPerCm = Math.min(scaleX, scaleY, 30);
+                const pixelWidth = binWidth * basePixelPerCm;
+                const pixelHeight = binHeight * basePixelPerCm;
+                const offsetX = (containerWidth - pixelWidth - margin) / 2 + margin / 2;
+                const offsetY = (containerHeight - pixelHeight - margin) / 2 + margin / 2;
+                
+                const pkgIndex = getPackageAtPosition(mouseX, mouseY, offsetX, offsetY, basePixelPerCm);
+                hoveredPackageIndex = pkgIndex;
+                canvas.style.cursor = pkgIndex >= 0 ? 'move' : 'grab';
+            }
+        });
+        
+        // Keyboard handlers
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') {
+                isShiftPressed = true;
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                if (hoveredPackageIndex >= 0) {
+                    rotatePackage(hoveredPackageIndex);
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                isShiftPressed = false;
+            }
+        });
+
+        // Mouse wheel zoom
+        wrapper.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            zoomLevel = Math.max(minZoom, Math.min(maxZoom, zoomLevel * zoomFactor));
+            updateZoomLevel();
+            drawPacking();
+        }, { passive: false });
+
+        // Helper: Convert hex to RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 59, g: 130, b: 246 };
+        }
+
+        // Export to PDF
+        function exportToPDF() {
+            if (packedPackages.length === 0) {
+                alert('Please pack the items first before exporting');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            // A4 dimensions in mm
+            const pageWidth = 210;
+            const pageHeight = 297;
+            const margin = 15;
+            const contentWidth = pageWidth - 2 * margin;
+            const contentHeight = pageHeight - 2 * margin;
+
+            // Title
+            doc.setFontSize(16);
+            doc.text('2D Bin Packing Result', margin, margin + 10);
+
+            // Info
+            const binWidth = parseFloat(document.getElementById('binWidth').value);
+            const binHeight = parseFloat(document.getElementById('binHeight').value);
+            doc.setFontSize(10);
+            doc.text(`Bin Size: ${binWidth} cm × ${binHeight} cm`, margin, margin + 20);
+            doc.text(`Packages Packed: ${packedPackages.length} / ${packages.length}`, margin, margin + 26);
+
+            // Calculate scale
+            const scale = Math.min(contentWidth / binWidth, (contentHeight - 40) / binHeight);
+            const scaledWidth = binWidth * scale;
+            const scaledHeight = binHeight * scale;
+            const startX = margin + (contentWidth - scaledWidth) / 2;
+            const startY = margin + 35;
+
+            // Draw bin border
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.5);
+            doc.rect(startX, startY, scaledWidth, scaledHeight);
+
+            // Draw 80cm indicators for height (dotted blue)
+            doc.setDrawColor(59, 130, 246);
+            doc.setLineWidth(0.3);
+            doc.setLineDash([2, 2]);
+            for (let i = 80; i <= binHeight; i += 80) {
+                // Skip if within 10cm of the border
+                if (binHeight - i < 10) continue;
+                
+                const y = startY + (i / binHeight) * scaledHeight;
+                doc.line(startX, y, startX + scaledWidth, y);
+            }
+
+            // Draw 2m indicators for width (dotted red)
+            doc.setDrawColor(239, 68, 68);
+            doc.setLineWidth(0.4);
+            doc.setLineDash([2, 2]);
+            for (let i = 200; i <= binWidth; i += 200) {
+                const x = startX + (i / binWidth) * scaledWidth;
+                doc.line(x, startY, x, startY + scaledHeight);
+                doc.setFontSize(7);
+                doc.setTextColor(239, 68, 68);
+                doc.text(`${i/100}`, x - 2, startY - 2);
+            }
+            
+            // Reset line dash
+            doc.setLineDash([]);
+
+            // Draw packages
+            doc.setLineWidth(0.3);
+            packedPackages.forEach(item => {
+                const x = startX + (item.x / binWidth) * scaledWidth;
+                const y = startY + (item.y / binHeight) * scaledHeight;
+                const w = (item.w / binWidth) * scaledWidth;
+                const h = (item.h / binHeight) * scaledHeight;
+
+                // Get client color
+                const clientColor = getClientColor(item.client);
+                const rgb = hexToRgb(clientColor);
+                
+                // Fill
+                doc.setFillColor(rgb.r, rgb.g, rgb.b);
+                doc.setDrawColor(Math.max(0, rgb.r - 50), Math.max(0, rgb.g - 50), Math.max(0, rgb.b - 50));
+                doc.rect(x, y, w, h, 'FD');
+
+                // Text
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(Math.max(6, Math.min(10, Math.min(w, h) / 5)));
+                doc.text(item.refNo || `#${item.id}`, x + w / 2, y + h / 2, { align: 'center' });
+            });
+
+            // Package list
+            let listY = startY + scaledHeight + 10;
+            if (listY + 20 < pageHeight - margin) {
+                doc.setTextColor(0);
+                doc.setFontSize(12);
+                doc.text('Package List:', margin, listY);
+                listY += 6;
+
+                doc.setFontSize(8);
+                packedPackages.forEach((item, index) => {
+                    if (listY > pageHeight - margin - 5) {
+                        doc.addPage();
+                        listY = margin + 10;
+                    }
+                    const clientText = item.client ? ` [${item.client}]` : '';
+                    const text = `${item.refNo || '#' + item.id}${clientText}: ${Math.round(item.w)} × ${Math.round(item.h)} cm${item.comment ? ' - ' + item.comment : ''}`;
+                    doc.text(text, margin, listY);
+                    listY += 5;
+                });
+            }
+
+            // Save
+            doc.save('bin-packing-result.pdf');
+        }
+
+        // Resize handler for dynamic sizing
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (packedPackages.length > 0) {
+                    drawPacking();
+                }
+            }, 100);
+        });
+
+        // Initialize
+        updatePackageList();
+        updateStatistics();
+        clearCanvas();
+        updateZoomLevel();
+
+        // Handle Enter key for adding packages
+        document.getElementById('packageWidth').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addPackage();
+        });
+    </script>
+</parameter>
+</body>
+</html>
