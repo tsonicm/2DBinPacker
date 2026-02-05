@@ -19,7 +19,8 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
 - **Guillotine Bin Packing Algorithm** - Best Area Fit heuristic for optimal space utilization
 - **Client-Based Segregation** - Automatically groups and color-codes packages by client
 - **Interactive Visualization** - Full canvas with zoom (50%-500%), pan, and drag capabilities
-- **Smart Collision Prevention** - Hold Shift while dragging to prevent package overlap
+- **Multi-Selection & Group Dragging** - Select multiple packages with Ctrl/Cmd+Click and move them together
+- **Smart Collision Prevention** - Hold Shift while dragging (single or groups) to prevent package overlap
 - **Package Rotation** - Double-click or press 'R' to rotate packages 90°
 
 ### Package Management
@@ -61,7 +62,10 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 
 ### Interactive Controls
 - **Drag packages** - Click and drag to reposition
-- **Shift + Drag** - Prevents overlap, slides along obstacles, snaps to nearest empty space
+- **Ctrl/Cmd + Click** - Multi-select packages (gold highlight shows selection)
+- **Group Drag** - Drag any selected package to move entire group together
+- **Shift + Drag** - Prevents overlap, slides along obstacles (works with single or groups)
+- **Escape** - Clear selection
 - **Double-click** - Rotate package 90°
 - **Press 'R'** - Rotate hovered package
 - **Scroll** - Zoom in/out (50%-500%)
@@ -118,7 +122,9 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 | **Dimensions** | Integer display with smart padding (3cm for 77/117, 5cm for others) |
 | **Reference Numbers** | Last 6 digits of EAN13, leading zeros removed |
 | **Client Grouping** | 10 distinct colors, segregated packing |
-| **Collision Detection** | Shift-drag with sliding and snap-to-empty |
+| **Multi-Selection** | Ctrl/Cmd+Click to select multiple packages, gold highlight |
+| **Group Operations** | Move multiple packages together, maintaining formation |
+| **Collision Detection** | Shift-drag with sliding (works with single packages or groups) |
 | **Guide Lines** | 80cm (height) and 2m (width) visual markers |
 | **Statistics** | Auto-converts to m² for areas ≥1 m² |
 | **PDF Export** | Professional A4 format with color coding |
@@ -137,10 +143,19 @@ The application uses a 10-color palette for client identification:
 - **Shipping Optimization** - Minimize shipping costs by maximizing space
 - **Pallet Configuration** - Design efficient pallet arrangements
 - **Multi-Client Operations** - Keep different clients' packages separated
+- **Manual Reorganization** - Select and reposition multiple packages to optimize manually
 
 ## 🔄 Version History
 
-### Version 1.0 (Current)
+### Version 1.1 (Current)
+- **Multi-Selection** - Ctrl/Cmd+Click to select multiple packages
+- **Group Dragging** - Move multiple packages together while maintaining their relative positions
+- **Enhanced Collision Prevention** - Shift-drag now works with groups, treating them as a single entity
+- **Visual Selection Indicators** - Gold glowing border highlights selected packages
+- **Keyboard Shortcuts** - Escape to clear selection, improved Ctrl/Cmd support
+- Selection state management - Auto-clears on repack or when clicking empty space
+
+### Version 1.0
 - Client-based package grouping and segregation
 - Smart collision prevention with sliding and snapping
 - Dynamic font scaling for high zoom levels

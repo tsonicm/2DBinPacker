@@ -414,9 +414,13 @@
                         <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-sm); border-top: 1px solid var(--color-border); font-size: 11px; color: var(--color-text-secondary);">
                             <div style="margin-bottom: 4px;"><strong>Controls:</strong></div>
                             <div>• Drag to move packages</div>
+                            <div>• <strong>Ctrl/Cmd + Click:</strong> Multi-select</div>
+                            <div style="padding-left: 12px; color: #6b7280;">- Selected packages highlighted in gold</div>
+                            <div style="padding-left: 12px; color: #6b7280;">- Drag to move group together</div>
                             <div>• <strong>Shift + Drag:</strong> Prevent overlap</div>
                             <div style="padding-left: 12px; color: #6b7280;">- Slides along obstacles</div>
-                            <div style="padding-left: 12px; color: #6b7280;">- Snaps to nearest empty space</div>
+                            <div style="padding-left: 12px; color: #6b7280;">- Works with single or groups</div>
+                            <div>• <strong>Escape:</strong> Clear selection</div>
                             <div>• Double-click to rotate</div>
                             <div>• Press 'R' key to rotate (hover)</div>
                             <div>• Scroll to zoom (50%-500%)</div>
@@ -471,6 +475,11 @@
         let dragOffsetY = 0;
         let hoveredPackageIndex = -1;
         let isShiftPressed = false;
+        let isCtrlPressed = false;
+        
+        // Multi-selection state
+        let selectedPackages = []; // Array of indices of selected packages
+        let groupDragOffsets = []; // Relative positions of each package in the group
         
         // Client color mapping
         const clientColors = [
@@ -685,6 +694,7 @@
             packages = [];
             packedPackages = [];
             packageIdCounter = 0;
+            selectedPackages = []; // Clear selection
             updatePackageList();
             updateStatistics();
             clearCanvas();
@@ -977,6 +987,25 @@
             return false;
         }
         
+        // Check if group of packages would overlap with other packages
+        function wouldGroupOverlap(packagePositions, excludeIndices) {
+            const excludeSet = new Set(excludeIndices);
+            
+            // Check each package in the group against all non-group packages
+            for (const testPkg of packagePositions) {
+                const testRect = { x: testPkg.x, y: testPkg.y, w: testPkg.w, h: testPkg.h };
+                for (let i = 0; i < packedPackages.length; i++) {
+                    if (excludeSet.has(i)) continue;
+                    const pkg = packedPackages[i];
+                    const pkgRect = { x: pkg.x, y: pkg.y, w: pkg.w, h: pkg.h };
+                    if (rectanglesOverlap(testRect, pkgRect)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
         // Get package at mouse position
         function getPackageAtPosition(mouseX, mouseY, offsetX, offsetY, basePixelPerCm) {
             // Adjust for zoom and pan
@@ -1049,6 +1078,7 @@
             }
 
             packedPackages = packItems();
+            selectedPackages = []; // Clear selection when repacking
             drawPacking();
 
             // Update packed count
@@ -1172,11 +1202,25 @@
                 ctx.fillStyle = clientColor;
                 ctx.fillRect(x, y, width, height);
 
-                // Border - darker version of the same color
-                const darkerColor = adjustBrightness(clientColor, -30);
-                ctx.strokeStyle = darkerColor;
-                ctx.lineWidth = 2 / zoomLevel;
-                ctx.strokeRect(x, y, width, height);
+                // Border - show selection with glowing border
+                const isSelected = selectedPackages.includes(index);
+                if (isSelected) {
+                    // Glowing selection border
+                    ctx.strokeStyle = '#fbbf24'; // Yellow/orange glow
+                    ctx.lineWidth = 4 / zoomLevel;
+                    ctx.strokeRect(x, y, width, height);
+                    
+                    // Inner border
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2 / zoomLevel;
+                    ctx.strokeRect(x, y, width, height);
+                } else {
+                    // Normal border - darker version of the same color
+                    const darkerColor = adjustBrightness(clientColor, -30);
+                    ctx.strokeStyle = darkerColor;
+                    ctx.lineWidth = 2 / zoomLevel;
+                    ctx.strokeRect(x, y, width, height);
+                }
 
                 // Calculate dynamic font size based on package size and zoom
                 const minDim = Math.min(width, height);
@@ -1302,17 +1346,59 @@
             const pkgIndex = getPackageAtPosition(mouseX, mouseY, offsetX, offsetY, basePixelPerCm);
             
             if (pkgIndex >= 0) {
-                // Start dragging package
+                // Handle Ctrl/Cmd+click for multi-selection
+                if (isCtrlPressed) {
+                    const selectedIndex = selectedPackages.indexOf(pkgIndex);
+                    if (selectedIndex >= 0) {
+                        // Deselect if already selected
+                        selectedPackages.splice(selectedIndex, 1);
+                    } else {
+                        // Add to selection
+                        selectedPackages.push(pkgIndex);
+                    }
+                    drawPacking();
+                    return;
+                }
+                
+                // If clicking on a non-selected package and multiple are selected, clear selection
+                if (selectedPackages.length > 0 && !selectedPackages.includes(pkgIndex)) {
+                    selectedPackages = [];
+                }
+                
+                // If no selection, make this the only selected package
+                if (selectedPackages.length === 0) {
+                    selectedPackages = [pkgIndex];
+                }
+                
+                // Start dragging package(s)
                 isDraggingPackage = true;
                 draggedPackageIndex = pkgIndex;
-                const pkg = packedPackages[pkgIndex];
+                
+                // Calculate offsets for all selected packages
                 const adjustedX = (mouseX - panX) / zoomLevel;
                 const adjustedY = (mouseY - panY) / zoomLevel;
-                dragOffsetX = adjustedX - (offsetX + pkg.x * basePixelPerCm);
-                dragOffsetY = adjustedY - (offsetY + pkg.y * basePixelPerCm);
+                const clickedPkg = packedPackages[pkgIndex];
+                const clickedPkgX = offsetX + clickedPkg.x * basePixelPerCm;
+                const clickedPkgY = offsetY + clickedPkg.y * basePixelPerCm;
+                
+                dragOffsetX = adjustedX - clickedPkgX;
+                dragOffsetY = adjustedY - clickedPkgY;
+                
+                // Store relative positions of all packages in the selection
+                groupDragOffsets = selectedPackages.map(idx => {
+                    const pkg = packedPackages[idx];
+                    return {
+                        index: idx,
+                        offsetX: pkg.x - clickedPkg.x,
+                        offsetY: pkg.y - clickedPkg.y
+                    };
+                });
+                
                 canvas.style.cursor = 'move';
             } else {
-                // Start panning
+                // Clicked on empty space - clear selection and start panning
+                selectedPackages = [];
+                drawPacking();
                 isPanning = true;
                 panStartX = e.clientX - panX;
                 panStartY = e.clientY - panY;
@@ -1371,57 +1457,151 @@
                 const offsetX = (containerWidth - pixelWidth - margin) / 2 + margin / 2;
                 const offsetY = (containerHeight - pixelHeight - margin) / 2 + margin / 2;
                 
-                // Update package position
-                const pkg = packedPackages[draggedPackageIndex];
+                // Update package position(s)
                 const adjustedX = (mouseX - panX) / zoomLevel;
                 const adjustedY = (mouseY - panY) / zoomLevel;
                 
-                // Calculate new position in cm
+                // Calculate new position for the primary dragged package in cm
                 let newX = (adjustedX - offsetX - dragOffsetX) / basePixelPerCm;
                 let newY = (adjustedY - offsetY - dragOffsetY) / basePixelPerCm;
                 
-                // Clamp to bin boundaries
-                newX = Math.max(0, Math.min(newX, binWidth - pkg.w));
-                newY = Math.max(0, Math.min(newY, binHeight - pkg.h));
-                
-                // Check for overlap if Shift is pressed
-                if (isShiftPressed) {
-                    // Try full movement first
-                    if (!wouldOverlap(newX, newY, pkg.w, pkg.h, draggedPackageIndex)) {
-                        pkg.x = newX;
-                        pkg.y = newY;
-                    } else {
-                        // Try sliding along obstacles (one axis at a time)
-                        let movedX = false;
-                        let movedY = false;
-                        
-                        // Try moving only on X axis (keeping Y the same)
-                        if (!wouldOverlap(newX, pkg.y, pkg.w, pkg.h, draggedPackageIndex)) {
-                            pkg.x = newX;
-                            movedX = true;
-                        }
-                        
-                        // Try moving only on Y axis (keeping X the same or using new X if it worked)
-                        const testX = movedX ? newX : pkg.x;
-                        if (!wouldOverlap(testX, newY, pkg.w, pkg.h, draggedPackageIndex)) {
-                            pkg.y = newY;
-                            movedY = true;
-                        }
-                        
-                        // Only snap to closest empty space if the current position is actually overlapping
-                        // (not just blocked by walls on both sides)
-                        if (!movedX && !movedY && wouldOverlap(pkg.x, pkg.y, pkg.w, pkg.h, draggedPackageIndex)) {
-                            const snap = findClosestValidPosition(newX, newY, pkg.w, pkg.h, draggedPackageIndex);
-                            if (snap.found) {
-                                pkg.x = snap.x;
-                                pkg.y = snap.y;
+                if (selectedPackages.length > 1) {
+                    // Multi-package drag
+                    // Calculate new positions for all packages in the group
+                    const newPositions = groupDragOffsets.map(offset => {
+                        const pkg = packedPackages[offset.index];
+                        return {
+                            index: offset.index,
+                            x: newX + offset.offsetX,
+                            y: newY + offset.offsetY,
+                            w: pkg.w,
+                            h: pkg.h
+                        };
+                    });
+                    
+                    // Find bounds of the group to clamp to bin boundaries
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    newPositions.forEach(pos => {
+                        minX = Math.min(minX, pos.x);
+                        minY = Math.min(minY, pos.y);
+                        maxX = Math.max(maxX, pos.x + pos.w);
+                        maxY = Math.max(maxY, pos.y + pos.h);
+                    });
+                    
+                    // Clamp group to bin boundaries
+                    let clampOffsetX = 0, clampOffsetY = 0;
+                    if (minX < 0) clampOffsetX = -minX;
+                    if (minY < 0) clampOffsetY = -minY;
+                    if (maxX > binWidth) clampOffsetX = binWidth - maxX;
+                    if (maxY > binHeight) clampOffsetY = binHeight - maxY;
+                    
+                    // Apply clamping to all positions
+                    newPositions.forEach(pos => {
+                        pos.x += clampOffsetX;
+                        pos.y += clampOffsetY;
+                    });
+                    
+                    // Check for overlap if Shift is pressed
+                    if (isShiftPressed) {
+                        // Try full movement first
+                        if (!wouldGroupOverlap(newPositions, selectedPackages)) {
+                            newPositions.forEach(pos => {
+                                packedPackages[pos.index].x = pos.x;
+                                packedPackages[pos.index].y = pos.y;
+                            });
+                        } else {
+                            // Try sliding on X axis only
+                            const xOnlyPositions = groupDragOffsets.map(offset => {
+                                const pkg = packedPackages[offset.index];
+                                return {
+                                    index: offset.index,
+                                    x: newX + offset.offsetX + clampOffsetX,
+                                    y: pkg.y,
+                                    w: pkg.w,
+                                    h: pkg.h
+                                };
+                            });
+                            
+                            let movedX = false;
+                            if (!wouldGroupOverlap(xOnlyPositions, selectedPackages)) {
+                                xOnlyPositions.forEach(pos => {
+                                    packedPackages[pos.index].x = pos.x;
+                                });
+                                movedX = true;
+                            }
+                            
+                            // Try sliding on Y axis only
+                            const yOnlyPositions = groupDragOffsets.map(offset => {
+                                const pkg = packedPackages[offset.index];
+                                return {
+                                    index: offset.index,
+                                    x: pkg.x,
+                                    y: newY + offset.offsetY + clampOffsetY,
+                                    w: pkg.w,
+                                    h: pkg.h
+                                };
+                            });
+                            
+                            if (!wouldGroupOverlap(yOnlyPositions, selectedPackages)) {
+                                yOnlyPositions.forEach(pos => {
+                                    packedPackages[pos.index].y = pos.y;
+                                });
                             }
                         }
-                        // If current position is valid and both axes are blocked, just stay in place
+                    } else {
+                        // No collision prevention - just move
+                        newPositions.forEach(pos => {
+                            packedPackages[pos.index].x = pos.x;
+                            packedPackages[pos.index].y = pos.y;
+                        });
                     }
                 } else {
-                    pkg.x = newX;
-                    pkg.y = newY;
+                    // Single package drag (original behavior)
+                    const pkg = packedPackages[draggedPackageIndex];
+                    
+                    // Clamp to bin boundaries
+                    newX = Math.max(0, Math.min(newX, binWidth - pkg.w));
+                    newY = Math.max(0, Math.min(newY, binHeight - pkg.h));
+                    
+                    // Check for overlap if Shift is pressed
+                    if (isShiftPressed) {
+                        // Try full movement first
+                        if (!wouldOverlap(newX, newY, pkg.w, pkg.h, draggedPackageIndex)) {
+                            pkg.x = newX;
+                            pkg.y = newY;
+                        } else {
+                            // Try sliding along obstacles (one axis at a time)
+                            let movedX = false;
+                            let movedY = false;
+                            
+                            // Try moving only on X axis (keeping Y the same)
+                            if (!wouldOverlap(newX, pkg.y, pkg.w, pkg.h, draggedPackageIndex)) {
+                                pkg.x = newX;
+                                movedX = true;
+                            }
+                            
+                            // Try moving only on Y axis (keeping X the same or using new X if it worked)
+                            const testX = movedX ? newX : pkg.x;
+                            if (!wouldOverlap(testX, newY, pkg.w, pkg.h, draggedPackageIndex)) {
+                                pkg.y = newY;
+                                movedY = true;
+                            }
+                            
+                            // Only snap to closest empty space if the current position is actually overlapping
+                            // (not just blocked by walls on both sides)
+                            if (!movedX && !movedY && wouldOverlap(pkg.x, pkg.y, pkg.w, pkg.h, draggedPackageIndex)) {
+                                const snap = findClosestValidPosition(newX, newY, pkg.w, pkg.h, draggedPackageIndex);
+                                if (snap.found) {
+                                    pkg.x = snap.x;
+                                    pkg.y = snap.y;
+                                }
+                            }
+                            // If current position is valid and both axes are blocked, just stay in place
+                        }
+                    } else {
+                        pkg.x = newX;
+                        pkg.y = newY;
+                    }
                 }
                 
                 drawPacking();
@@ -1479,9 +1659,19 @@
             if (e.key === 'Shift') {
                 isShiftPressed = true;
             }
+            if (e.key === 'Control' || e.key === 'Meta') {  // Ctrl on Windows/Linux, Cmd on Mac
+                isCtrlPressed = true;
+            }
             if (e.key === 'r' || e.key === 'R') {
                 if (hoveredPackageIndex >= 0) {
                     rotatePackage(hoveredPackageIndex);
+                }
+            }
+            if (e.key === 'Escape') {
+                // Clear selection on Escape
+                if (selectedPackages.length > 0) {
+                    selectedPackages = [];
+                    drawPacking();
                 }
             }
         });
@@ -1489,6 +1679,9 @@
         document.addEventListener('keyup', (e) => {
             if (e.key === 'Shift') {
                 isShiftPressed = false;
+            }
+            if (e.key === 'Control' || e.key === 'Meta') {
+                isCtrlPressed = false;
             }
         });
 
