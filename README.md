@@ -26,7 +26,7 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
 - **Reference Number System** - Extracts last 6 digits from EAN13 barcodes (auto-trims leading zeros)
 - **Bulk Import** - Tab-separated format: `refNo [tab] LxW [tab] comment [tab] client`
 - **Editable Packages** - Modify packages after adding them
-- **Automatic Padding** - Adds 5cm safety margin to all dimensions
+- **Smart Padding System** - Adds 3cm padding for sizes 77 and 117, 5cm for all other standard sizes (50, 60, 70, 90, 100, 110)
 - **Client Assignment** - Organize packages by client with 10-color palette
 
 ### Visual Guides
@@ -115,7 +115,7 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 
 | Feature | Description |
 |---------|-------------|
-| **Dimensions** | Integer display with automatic 5cm padding |
+| **Dimensions** | Integer display with smart padding (3cm for 77/117, 5cm for others) |
 | **Reference Numbers** | Last 6 digits of EAN13, leading zeros removed |
 | **Client Grouping** | 10 distinct colors, segregated packing |
 | **Collision Detection** | Shift-drag with sliding and snap-to-empty |
@@ -147,7 +147,7 @@ The application uses a 10-color palette for client identification:
 - Automatic unit conversion (cm² ↔ m²)
 - Enhanced guide lines (80cm height, 2m width markers)
 - Integer dimension display throughout
-- 5cm automatic padding on all dimensions
+- Smart padding system: 3cm for sizes 77 and 117, 5cm for all other standard sizes
 - Interactive drag, rotate, zoom, and pan controls
 - PDF export functionality (A4 format)
 - Bulk import via tab-separated format
@@ -175,4 +175,4 @@ This application is provided as-is with no planned future development. It is a c
 
 ---
 
-**Note**: All dimensions are in centimeters unless otherwise specified. The application automatically adds 5cm padding to entered dimensions for safety margins.
+**Note**: All dimensions are in centimeters unless otherwise specified. The application automatically adds padding to entered dimensions for safety margins: 3cm for standard sizes 77 and 117, 5cm for all other sizes (50, 60, 70, 90, 100, 110).

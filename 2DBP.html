@@ -499,6 +499,13 @@
             return digits.replace(/^0+/, '') || '0';
         }
 
+        // Helper: Get padding based on standard package size
+        // Standard sizes: 50, 60, 70, 77, 90, 100, 110, 117
+        // 77 and 117 use 3cm padding, all others use 5cm padding
+        function getPadding(size) {
+            return (size === 77 || size === 117) ? 3 : 5;
+        }
+
         // Helper: Convert cm to pixels for canvas
         function cmToPixels(cm, canvasSize = 400) {
             const binCm = Math.max(
@@ -527,11 +534,14 @@
                 return;
             }
 
+            const lengthPadding = getPadding(length);
+            const widthPadding = getPadding(width);
+
             packages.push({
                 id: packageIdCounter++,
                 refNo: refNo,
-                length: length + 5,
-                width: width + 5,
+                length: length + lengthPadding,
+                width: width + widthPadding,
                 comment: comment,
                 client: client
             });
@@ -579,11 +589,14 @@
                         const refNo = formatRefNo(refNoInput);
                         
                         if (refNo && length > 0 && width > 0) {
+                            const lengthPadding = getPadding(length);
+                            const widthPadding = getPadding(width);
+                            
                             packages.push({
                                 id: packageIdCounter++,
                                 refNo: refNo,
-                                length: length + 5,
-                                width: width + 5,
+                                length: length + lengthPadding,
+                                width: width + widthPadding,
                                 comment: comment,
                                 client: client
                             });
@@ -654,9 +667,12 @@
                 return;
             }
 
+            const lengthPadding = getPadding(parsedLength);
+            const widthPadding = getPadding(parsedWidth);
+
             pkg.refNo = formattedRefNo;
-            pkg.length = parsedLength + 5;
-            pkg.width = parsedWidth + 5;
+            pkg.length = parsedLength + lengthPadding;
+            pkg.width = parsedWidth + widthPadding;
             pkg.comment = newComment;
             pkg.client = newClient;
 
