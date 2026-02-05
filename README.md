@@ -2,7 +2,7 @@
 
 A professional, interactive web application for visualizing and optimizing 2D bin packing solutions with client-based segregation and collision prevention.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-GPL%203.0-blue.svg)
 ![AI-Assisted](https://img.shields.io/badge/AI-Assisted-purple.svg)
 
 ## ⚠️ Development Notice
@@ -151,7 +151,9 @@ The application uses a 10-color palette for client identification:
 
 ## 📄 License
 
-MIT License - Feel free to use, modify, and distribute this application.
+GPL 3.0 License - This application is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 ## 🤖 AI Acknowledgment
 
