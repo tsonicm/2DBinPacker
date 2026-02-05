@@ -165,13 +165,9 @@ This project was developed with significant assistance from AI tools (GitHub Cop
 - UI/UX improvements
 - Documentation
 
-## 🙏 Contributing
+## ℹ️ Project Status
 
-While this is a single-file application primarily developed with AI assistance, contributions, suggestions, and bug reports are welcome!
-
-## 📧 Contact
-
-For questions, issues, or feature requests, please open an issue in the repository.
+This application is provided as-is with no planned future development. It is a complete, functional tool ready for use in its current state.
 
 ---
 
