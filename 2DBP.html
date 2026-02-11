@@ -1187,6 +1187,28 @@
             
             // Reset line dash for subsequent drawing
             ctx.setLineDash([]);
+            
+            // Draw horizontal axis: 0m marker at start (top)
+            ctx.strokeStyle = '#000000';
+            ctx.fillStyle = '#000000';
+            ctx.lineWidth = 1.5 / zoomLevel;
+            ctx.font = `bold ${12 / zoomLevel}px Arial`;
+            ctx.textAlign = 'center';
+            // Vertical tick at 0m
+            ctx.beginPath();
+            ctx.moveTo(offsetX, offsetY - 5 / zoomLevel);
+            ctx.lineTo(offsetX, offsetY);
+            ctx.stroke();
+            ctx.fillText('0m', offsetX, offsetY - 10 / zoomLevel);
+            
+            // Horizontal axis: final length marker at end (top)
+            const finalLengthMeters = (binWidth / 100).toFixed(2);
+            // Vertical tick at final length
+            ctx.beginPath();
+            ctx.moveTo(offsetX + pixelWidth, offsetY - 5 / zoomLevel);
+            ctx.lineTo(offsetX + pixelWidth, offsetY);
+            ctx.stroke();
+            ctx.fillText(`${finalLengthMeters}m`, offsetX + pixelWidth, offsetY - 10 / zoomLevel);
 
             // Draw packed items
             packedPackages.forEach((item, index) => {
@@ -1713,14 +1735,14 @@
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({
-                orientation: 'portrait',
+                orientation: 'landscape',
                 unit: 'mm',
                 format: 'a4'
             });
 
-            // A4 dimensions in mm
-            const pageWidth = 210;
-            const pageHeight = 297;
+            // A4 dimensions in mm (landscape)
+            const pageWidth = 297;
+            const pageHeight = 210;
             const margin = 15;
             const contentWidth = pageWidth - 2 * margin;
             const contentHeight = pageHeight - 2 * margin;
@@ -1774,6 +1796,21 @@
             
             // Reset line dash
             doc.setLineDash([]);
+            
+            // Draw horizontal axis: 0m marker at start (top)
+            doc.setDrawColor(0);
+            doc.setTextColor(0);
+            doc.setFontSize(9);
+            doc.setLineWidth(0.5);
+            // Vertical tick at 0m
+            doc.line(startX, startY - 3, startX, startY);
+            doc.text('0m', startX - 2, startY - 5);
+            
+            // Horizontal axis: final length marker at end (top)
+            const finalLengthMeters = (binWidth / 100).toFixed(2);
+            // Vertical tick at final length
+            doc.line(startX + scaledWidth, startY - 3, startX + scaledWidth, startY);
+            doc.text(`${finalLengthMeters}m`, startX + scaledWidth - 5, startY - 5);
 
             // Draw packages
             doc.setLineWidth(0.3);

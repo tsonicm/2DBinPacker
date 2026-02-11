@@ -33,11 +33,12 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
 ### Visual Guides
 - **80cm Height Markers** - Blue dotted lines every 80cm (vertical axis)
 - **2m Width Markers** - Red dotted lines every 2m with meter labels (horizontal axis)
+- **Start/End Axis Markers** - 0m marker at bin start and total length marker at bin end (top of bin)
 - **Dynamic Scaling** - Text and elements scale intelligently with zoom level
 - **Color-Coded Display** - Each client gets a unique color for easy identification
 
 ### Export & Statistics
-- **PDF Export** - A4 format with color-coded layout and complete package list
+- **PDF Export** - A4 landscape format with color-coded layout, axis markers, and complete package list
 - **Real-Time Statistics** - Bin area, package area, utilization percentage, packed count
 - **Smart Unit Display** - Automatically converts to m² for large areas (≥10,000 cm²)
 
@@ -126,8 +127,9 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 | **Group Operations** | Move multiple packages together, maintaining formation |
 | **Collision Detection** | Shift-drag with sliding (works with single packages or groups) |
 | **Guide Lines** | 80cm (height) and 2m (width) visual markers |
+| **Axis Markers** | 0m start and total length end markers at top |
 | **Statistics** | Auto-converts to m² for areas ≥1 m² |
-| **PDF Export** | Professional A4 format with color coding |
+| **PDF Export** | Professional A4 landscape format with axis markers |
 
 ## 🎨 Color Palette
 
@@ -147,7 +149,12 @@ The application uses a 10-color palette for client identification:
 
 ## 🔄 Version History
 
-### Version 1.1 (Current)
+### Version 1.2 (Current)
+- **Horizontal Axis Markers** - 0m and final bin length markers at top of bin (both visualizer and PDF)
+- **Landscape PDF Export** - Changed from portrait to landscape orientation for better bin visualization
+- **Improved Print Layout** - Axis markers help with physical measurements during loading
+
+### Version 1.1
 - **Multi-Selection** - Ctrl/Cmd+Click to select multiple packages
 - **Group Dragging** - Move multiple packages together while maintaining their relative positions
 - **Enhanced Collision Prevention** - Shift-drag now works with groups, treating them as a single entity
