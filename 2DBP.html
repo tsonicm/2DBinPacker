@@ -774,7 +774,7 @@
             document.getElementById('packedCount').textContent = packedPackages.length;
         }
 
-        // 2D Bin Packing Algorithm (Guillotine with Best Area Fit)
+        // 2D Bin Packing Algorithm (Maximal Rectangles with Strict Client Clustering)
         function packItems() {
             const binWidth = parseFloat(document.getElementById('binWidth').value);
             const binHeight = parseFloat(document.getElementById('binHeight').value);
@@ -800,110 +800,433 @@
                 });
             });
 
-            // Sort each group by area (largest first)
+            // Sort each group by constraint factor (most constrained first)
+            // Packages close to bin dimensions are most constraining and should go first
             Object.values(clientGroups).forEach(group => {
-                group.sort((a, b) => (b.w * b.h) - (a.w * a.h));
+                group.sort((a, b) => {
+                    // Calculate how constraining each package is
+                    const constraintA = Math.max(
+                        Math.min(a.w / binWidth, a.h / binHeight),
+                        Math.min(a.h / binWidth, a.w / binHeight)
+                    );
+                    const constraintB = Math.max(
+                        Math.min(b.w / binWidth, b.h / binHeight),
+                        Math.min(b.h / binWidth, b.w / binHeight)
+                    );
+                    
+                    // If constraint factors are similar, sort by area
+                    if (Math.abs(constraintA - constraintB) < 0.1) {
+                        return (b.w * b.h) - (a.w * a.h);
+                    }
+                    
+                    return constraintB - constraintA;
+                });
+            });
+            
+            // Sort client groups by total area (largest clients first)
+            const clientKeys = Object.keys(clientGroups).sort((a, b) => {
+                const areaA = clientGroups[a].reduce((sum, pkg) => sum + (pkg.w * pkg.h), 0);
+                const areaB = clientGroups[b].reduce((sum, pkg) => sum + (pkg.w * pkg.h), 0);
+                return areaB - areaA;
             });
 
             const result = [];
-            // Free rectangles - start with the entire bin
-            const freeRects = [{ x: 0, y: 0, w: binWidth, h: binHeight }];
+            // Global free rectangles - start with the entire bin
+            const globalFreeRects = [{ x: 0, y: 0, w: binWidth, h: binHeight }];
             
-            // Process each client group separately
-            Object.keys(clientGroups).forEach(clientKey => {
+            // Process each client group completely before moving to the next
+            clientKeys.forEach(clientKey => {
                 const itemsForPacking = clientGroups[clientKey];
+                const clientPackages = []; // Track packages placed for this client
+                const clientFreeRects = [...globalFreeRects.map(r => ({...r}))] // Deep copy for this client
 
-                // Try to place each item in this client group
-                itemsForPacking.forEach(item => {
-                let bestRect = null;
-                let bestRectIndex = -1;
-                let rotated = false;
-                let bestAreaFit = Infinity;
+                // Pack each item in this client group
+                itemsForPacking.forEach((item, itemIndex) => {
+                    let bestPlacement = null;
+                    let bestScore = -Infinity;
 
-                // Find the best free rectangle for this item
-                for (let i = 0; i < freeRects.length; i++) {
-                    const rect = freeRects[i];
-
-                    // Try normal orientation
-                    if (item.w <= rect.w && item.h <= rect.h) {
-                        const areaFit = rect.w * rect.h - item.w * item.h;
-                        if (areaFit < bestAreaFit) {
-                            bestRect = rect;
-                            bestRectIndex = i;
-                            rotated = false;
-                            bestAreaFit = areaFit;
-                        }
+                    // Sort free rectangles to prioritize those adjacent to current client cluster
+                    if (clientPackages.length > 0) {
+                        clientFreeRects.sort((a, b) => {
+                            const distA = getMinDistanceToCluster(a, clientPackages);
+                            const distB = getMinDistanceToCluster(b, clientPackages);
+                            
+                            // Primary: sort by distance to cluster
+                            if (Math.abs(distA - distB) > 5) {
+                                return distA - distB;
+                            }
+                            
+                            // Secondary: prefer rectangles with better fit potential (smaller area)
+                            const areaA = a.w * a.h;
+                            const areaB = b.w * b.h;
+                            if (Math.abs(areaA - areaB) > 100) {
+                                return areaA - areaB;
+                            }
+                            
+                            // Tertiary: prefer top-left as final tie-breaker
+                            if (Math.abs(a.y - b.y) > 5) {
+                                return a.y - b.y;
+                            }
+                            return a.x - b.x;
+                        });
+                    } else {
+                        // For first package, prefer smaller rectangles with top-left bias
+                        clientFreeRects.sort((a, b) => {
+                            const areaA = a.w * a.h;
+                            const areaB = b.w * b.h;
+                            if (Math.abs(areaA - areaB) > 100) {
+                                return areaA - areaB;
+                            }
+                            if (Math.abs(a.y - b.y) > 5) {
+                                return a.y - b.y;
+                            }
+                            return a.x - b.x;
+                        });
                     }
 
-                    // Try rotated orientation
-                    if (item.h <= rect.w && item.w <= rect.h) {
-                        const areaFit = rect.w * rect.h - item.w * item.h;
-                        if (areaFit < bestAreaFit) {
-                            bestRect = rect;
-                            bestRectIndex = i;
-                            rotated = true;
-                            bestAreaFit = areaFit;
+                    // Evaluate all possible placements
+                    for (let i = 0; i < clientFreeRects.length; i++) {
+                        const rect = clientFreeRects[i];
+
+                        // Try normal orientation
+                        if (item.w <= rect.w && item.h <= rect.h) {
+                            const score = evaluateClientPlacement(rect, item, false, clientPackages, itemIndex === 0, binWidth, binHeight, clientFreeRects, item.w, item.h);
+                            if (score > bestScore) {
+                                bestPlacement = {
+                                    rect: rect,
+                                    rectIndex: i,
+                                    rotated: false,
+                                    x: rect.x,
+                                    y: rect.y,
+                                    w: item.w,
+                                    h: item.h
+                                };
+                                bestScore = score;
+                            }
+                        }
+
+                        // Try rotated orientation
+                        if (item.h <= rect.w && item.w <= rect.h) {
+                            const score = evaluateClientPlacement(rect, item, true, clientPackages, itemIndex === 0, binWidth, binHeight, clientFreeRects, item.h, item.w);
+                            if (score > bestScore) {
+                                bestPlacement = {
+                                    rect: rect,
+                                    rectIndex: i,
+                                    rotated: true,
+                                    x: rect.x,
+                                    y: rect.y,
+                                    w: item.h,
+                                    h: item.w
+                                };
+                                bestScore = score;
+                            }
                         }
                     }
-                }
 
                     // If we found a place, insert the item
-                    if (bestRect) {
+                    if (bestPlacement) {
                         const newItem = {
                             id: item.id,
                             refNo: item.refNo,
                             client: item.client,
                             comment: item.comment,
-                            x: bestRect.x,
-                            y: bestRect.y,
-                            w: rotated ? item.h : item.w,
-                            h: rotated ? item.w : item.h
+                            x: bestPlacement.x,
+                            y: bestPlacement.y,
+                            w: bestPlacement.w,
+                            h: bestPlacement.h
                         };
                         result.push(newItem);
+                        clientPackages.push(newItem);
 
-                    // Split the free rectangle using guillotine cut
-                    // Remove the used rectangle
-                    freeRects.splice(bestRectIndex, 1);
-
-                    // Create new free rectangles from the remaining space
-                    // Right rectangle
-                    if (newItem.x + newItem.w < bestRect.x + bestRect.w) {
-                        freeRects.push({
-                            x: newItem.x + newItem.w,
-                            y: bestRect.y,
-                            w: bestRect.w - newItem.w,
-                            h: bestRect.h
-                        });
+                        // Maximal Rectangles: Split all overlapping free rectangles
+                        splitFreeRectangles(clientFreeRects, newItem);
+                        
+                        // Remove redundant rectangles
+                        pruneAndMergeFreeRects(clientFreeRects);
                     }
-
-                    // Bottom rectangle
-                    if (newItem.y + newItem.h < bestRect.y + bestRect.h) {
-                        freeRects.push({
-                            x: bestRect.x,
-                            y: newItem.y + newItem.h,
-                            w: newItem.w,
-                            h: bestRect.h - newItem.h
-                        });
-                    }
-
-                        // Remove redundant rectangles and merge adjacent ones
-                        pruneAndMergeFreeRects(freeRects);
-                    }
+                });
+                
+                // After placing all packages for this client, update global free space
+                clientPackages.forEach(pkg => {
+                    splitFreeRectangles(globalFreeRects, pkg);
+                    pruneAndMergeFreeRects(globalFreeRects);
                 });
             });
 
             return result;
         }
 
-        // Helper function to remove redundant free rectangles
+        // Calculate minimum distance from a free rectangle to a cluster of packages
+        function getMinDistanceToCluster(rect, cluster) {
+            if (cluster.length === 0) return 0;
+            
+            let minDist = Infinity;
+            cluster.forEach(pkg => {
+                // Calculate distance between rectangle centers
+                const rectCenterX = rect.x + rect.w / 2;
+                const rectCenterY = rect.y + rect.h / 2;
+                const pkgCenterX = pkg.x + pkg.w / 2;
+                const pkgCenterY = pkg.y + pkg.h / 2;
+                
+                // Check if they touch (distance = 0)
+                const touchesLeft = Math.abs(rect.x - (pkg.x + pkg.w)) < 0.1;
+                const touchesRight = Math.abs(rect.x + rect.w - pkg.x) < 0.1;
+                const touchesTop = Math.abs(rect.y - (pkg.y + pkg.h)) < 0.1;
+                const touchesBottom = Math.abs(rect.y + rect.h - pkg.y) < 0.1;
+                
+                if ((touchesLeft || touchesRight) && rect.y < pkg.y + pkg.h && rect.y + rect.h > pkg.y) {
+                    return 0;
+                }
+                if ((touchesTop || touchesBottom) && rect.x < pkg.x + pkg.w && rect.x + rect.w > pkg.x) {
+                    return 0;
+                }
+                
+                // Calculate edge-to-edge distance
+                const dx = Math.max(0, Math.max(rect.x - (pkg.x + pkg.w), pkg.x - (rect.x + rect.w)));
+                const dy = Math.max(0, Math.max(rect.y - (pkg.y + pkg.h), pkg.y - (rect.y + rect.h)));
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                minDist = Math.min(minDist, distance);
+            });
+            
+            return minDist;
+        }
+
+        // Evaluate placement quality for client clustering
+        function evaluateClientPlacement(rect, item, rotated, clientPackages, isFirstItem, binWidth, binHeight, allFreeRects, w, h) {
+            // w and h are already the dimensions after rotation
+            
+            // Calculate leftover space (Best Short Side Fit)
+            const leftoverHoriz = rect.w - w;
+            const leftoverVert = rect.h - h;
+            const shortSideFit = Math.min(leftoverHoriz, leftoverVert);
+            const longSideFit = Math.max(leftoverHoriz, leftoverVert);
+            
+            // Base score: prefer tight fits (this is the PRIMARY criterion)
+            let score = 100000 - (shortSideFit * 100 + longSideFit * 10);
+            
+            // CRITICAL: Heavily penalize orientations that create unusably narrow spaces
+            const minUsableSpace = 30; // Minimum usable space in cm
+            
+            // Check if this placement would create narrow unusable strips
+            if (shortSideFit > 0 && shortSideFit < minUsableSpace) {
+                // This creates a strip too narrow to use - heavy penalty
+                score -= 50000 * (minUsableSpace - shortSideFit);
+            }
+            
+            // Additional penalty if the package takes up most of a dimension
+            // leaving a sliver that's hard to use
+            const heightRatio = h / rect.h;
+            const widthRatio = w / rect.w;
+            
+            if (heightRatio > 0.85 && leftoverVert < minUsableSpace && leftoverVert > 0) {
+                // Takes up most of the height, leaving narrow bottom strip
+                score -= 100000;
+            }
+            if (widthRatio > 0.85 && leftoverHoriz < minUsableSpace && leftoverHoriz > 0) {
+                // Takes up most of the width, leaving narrow right strip  
+                score -= 100000;
+            }
+            
+            // Secondary preference for top-left positions (much lighter weight)
+            // This acts as a tie-breaker when fits are similar
+            score -= rect.y * 1;   // Light penalty for lower positions
+            score -= rect.x * 0.5; // Very light penalty for rightward positions
+            
+            // For first item of client, use top-left + best fit
+            if (isFirstItem || clientPackages.length === 0) {
+                return score;
+            }
+            
+            // For subsequent items, HEAVILY prioritize adjacency to same client
+            let maxTouching = 0;
+            let minDistance = Infinity;
+            
+            // The package will be placed at rect.x, rect.y with dimensions w, h
+            const pkgX = rect.x;
+            const pkgY = rect.y;
+            const pkgRight = pkgX + w;
+            const pkgBottom = pkgY + h;
+            
+            clientPackages.forEach(placed => {
+                const placedRight = placed.x + placed.w;
+                const placedBottom = placed.y + placed.h;
+                
+                // Calculate touching length for each side
+                let touching = 0;
+                
+                // Left side: package's left edge touches placed package's right edge
+                if (Math.abs(pkgX - placedRight) < 0.1) {
+                    const overlapStart = Math.max(pkgY, placed.y);
+                    const overlapEnd = Math.min(pkgBottom, placedBottom);
+                    if (overlapEnd > overlapStart) {
+                        touching = Math.max(touching, overlapEnd - overlapStart);
+                    }
+                }
+                
+                // Right side: package's right edge touches placed package's left edge
+                if (Math.abs(pkgRight - placed.x) < 0.1) {
+                    const overlapStart = Math.max(pkgY, placed.y);
+                    const overlapEnd = Math.min(pkgBottom, placedBottom);
+                    if (overlapEnd > overlapStart) {
+                        touching = Math.max(touching, overlapEnd - overlapStart);
+                    }
+                }
+                
+                // Top side: package's top edge touches placed package's bottom edge
+                if (Math.abs(pkgY - placedBottom) < 0.1) {
+                    const overlapStart = Math.max(pkgX, placed.x);
+                    const overlapEnd = Math.min(pkgRight, placedRight);
+                    if (overlapEnd > overlapStart) {
+                        touching = Math.max(touching, overlapEnd - overlapStart);
+                    }
+                }
+                
+                // Bottom side: package's bottom edge touches placed package's top edge
+                if (Math.abs(pkgBottom - placed.y) < 0.1) {
+                    const overlapStart = Math.max(pkgX, placed.x);
+                    const overlapEnd = Math.min(pkgRight, placedRight);
+                    if (overlapEnd > overlapStart) {
+                        touching = Math.max(touching, overlapEnd - overlapStart);
+                    }
+                }
+                
+                maxTouching = Math.max(maxTouching, touching);
+                
+                // Calculate minimum distance if not touching
+                if (touching === 0) {
+                    const dx = Math.max(0, Math.max(pkgX - placedRight, placed.x - pkgRight));
+                    const dy = Math.max(0, Math.max(pkgY - placedBottom, placed.y - pkgBottom));
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    minDistance = Math.min(minDistance, distance);
+                }
+            });
+            
+            // MASSIVE bonus for touching same-client packages
+            if (maxTouching > 0) {
+                // More touching length = better score
+                // Strong adjacency bonus to keep clients clustered
+                score += 5000000 + maxTouching * 5000;
+            } else {
+                // If not touching, heavily penalize but still allow with distance penalty
+                score -= 10000000 + minDistance * 10000;
+            }
+            
+            return score;
+        }
+
+        // Split free rectangles using Maximal Rectangles subdivision
+        function splitFreeRectangles(freeRects, placedRect) {
+            const newRects = [];
+            
+            for (let i = freeRects.length - 1; i >= 0; i--) {
+                const rect = freeRects[i];
+                
+                // Check if the placed rectangle overlaps with this free rectangle
+                if (!rectanglesOverlap(placedRect, rect)) {
+                    continue;
+                }
+                
+                // Remove the overlapping rectangle and create new ones from the remaining space
+                freeRects.splice(i, 1);
+                
+                // Generate new rectangles from the non-overlapping parts
+                // Left side
+                if (rect.x < placedRect.x) {
+                    newRects.push({
+                        x: rect.x,
+                        y: rect.y,
+                        w: placedRect.x - rect.x,
+                        h: rect.h
+                    });
+                }
+                
+                // Right side
+                if (rect.x + rect.w > placedRect.x + placedRect.w) {
+                    newRects.push({
+                        x: placedRect.x + placedRect.w,
+                        y: rect.y,
+                        w: rect.x + rect.w - (placedRect.x + placedRect.w),
+                        h: rect.h
+                    });
+                }
+                
+                // Top side
+                if (rect.y < placedRect.y) {
+                    newRects.push({
+                        x: rect.x,
+                        y: rect.y,
+                        w: rect.w,
+                        h: placedRect.y - rect.y
+                    });
+                }
+                
+                // Bottom side
+                if (rect.y + rect.h > placedRect.y + placedRect.h) {
+                    newRects.push({
+                        x: rect.x,
+                        y: placedRect.y + placedRect.h,
+                        w: rect.w,
+                        h: rect.y + rect.h - (placedRect.y + placedRect.h)
+                    });
+                }
+            }
+            
+            // Add all new rectangles to the free list
+            freeRects.push(...newRects);
+        }
+
+        // Helper function to remove redundant free rectangles and merge adjacent ones
         function pruneAndMergeFreeRects(freeRects) {
             // Remove rectangles that are completely inside other rectangles
             for (let i = freeRects.length - 1; i >= 0; i--) {
                 for (let j = freeRects.length - 1; j >= 0; j--) {
-                    if (i !== j) {
+                    if (i !== j && i < freeRects.length) {
                         if (isRectInsideRect(freeRects[i], freeRects[j])) {
                             freeRects.splice(i, 1);
                             break;
+                        }
+                    }
+                }
+            }
+            
+            // Merge adjacent rectangles to create larger free spaces
+            let merged = true;
+            while (merged) {
+                merged = false;
+                for (let i = 0; i < freeRects.length && !merged; i++) {
+                    for (let j = i + 1; j < freeRects.length && !merged; j++) {
+                        const rect1 = freeRects[i];
+                        const rect2 = freeRects[j];
+                        
+                        // Check if rectangles can be merged horizontally
+                        if (rect1.y === rect2.y && rect1.h === rect2.h) {
+                            if (rect1.x + rect1.w === rect2.x) {
+                                // rect2 is directly to the right of rect1
+                                rect1.w += rect2.w;
+                                freeRects.splice(j, 1);
+                                merged = true;
+                            } else if (rect2.x + rect2.w === rect1.x) {
+                                // rect1 is directly to the right of rect2
+                                rect2.w += rect1.w;
+                                freeRects.splice(i, 1);
+                                merged = true;
+                            }
+                        }
+                        
+                        // Check if rectangles can be merged vertically
+                        if (rect1.x === rect2.x && rect1.w === rect2.w) {
+                            if (rect1.y + rect1.h === rect2.y) {
+                                // rect2 is directly below rect1
+                                rect1.h += rect2.h;
+                                freeRects.splice(j, 1);
+                                merged = true;
+                            } else if (rect2.y + rect2.h === rect1.y) {
+                                // rect1 is directly below rect2
+                                rect2.h += rect1.h;
+                                freeRects.splice(i, 1);
+                                merged = true;
+                            }
                         }
                     }
                 }

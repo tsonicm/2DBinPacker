@@ -11,13 +11,14 @@ This application was created with the assistance of AI tools (GitHub Copilot / C
 
 ## 🎯 Overview
 
-The 2D Bin Packing Visualizer is a single-file HTML application that helps you efficiently pack rectangular packages into a 2D bin space. It's designed for logistics, warehouse management, and shipping optimization scenarios where you need to visualize how packages fit together.
+The 2D Bin Packing Visualizer is a single-file HTML application that helps you efficiently pack rectangular packages into a 2D bin space. It's designed for logistics, warehouse management, and shipping optimization scenarios where you need to visualize how packages fit together with strict client segregation.
 
 ## ✨ Key Features
 
 ### Core Functionality
-- **Guillotine Bin Packing Algorithm** - Best Area Fit heuristic for optimal space utilization
-- **Client-Based Segregation** - Automatically groups and color-codes packages by client
+- **Maximal Rectangles Algorithm** - Best Short Side Fit heuristic with constraint-based sorting for optimal space utilization
+- **Strict Client Segregation** - Sequential client processing ensures packages stay grouped without interleaving
+- **Smart Space Management** - Detects and penalizes unusable narrow spaces (<30cm), prioritizes large constraining packages first
 - **Interactive Visualization** - Full canvas with zoom (50%-500%), pan, and drag capabilities
 - **Unpacked Package Display** - Visual representation of unpacked packages below the bin with wrapping layout
 - **Alt+Click Placement** - Manually place unpacked packages into the bin with automatic position finding
@@ -110,10 +111,13 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 - **Canvas API** - For visualization rendering
 
 ### Algorithm
-- **Guillotine Method** with Best Area Fit
-- **Client-First Grouping** - Packs packages by client to prevent mixing
-- **Free Rectangle Management** - Efficient space tracking and splitting
-- **Automatic Rotation** - Tests both orientations for best fit
+- **Maximal Rectangles Method** with Best Short Side Fit heuristic
+- **Sequential Client Processing** - Each client's packages are packed completely before moving to the next client
+- **Constraint-Based Sorting** - Large packages near bin dimensions are placed first to minimize unusable space
+- **Strict Adjacency Enforcement** - Packages must touch same-client packages (5M+ score bonus for touching)
+- **Unusable Space Detection** - Heavily penalizes orientations creating gaps <30cm (-50k to -100k penalties)
+- **Free Rectangle Management** - Maximal rectangles split into 4 sub-rectangles, with pruning and merging
+- **Automatic Rotation** - Tests both orientations, rejecting those that create narrow slivers
 
 ### Browser Compatibility
 - Chrome/Edge (recommended)
@@ -125,9 +129,12 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 
 | Feature | Description |
 |---------|-------------|
+| **Algorithm** | Maximal Rectangles with Best Short Side Fit, constraint-based sorting |
+| **Client Segregation** | Sequential processing, no interleaving, strict adjacency enforcement (5M+ bonus) |
+| **Space Optimization** | Detects unusable gaps (<30cm), penalizes narrow slivers, merges adjacent free rects |
 | **Dimensions** | Integer display with smart padding (3cm for 77/117, 5cm for others) |
 | **Reference Numbers** | Last 6 digits of EAN13, leading zeros removed |
-| **Client Grouping** | 10 distinct colors, segregated packing |
+| **Client Grouping** | 10 distinct colors, packages must touch same-client packages |
 | **Unpacked Display** | Visual packages below bin, wrapping horizontally, Alt+Click to place |
 | **Remaining Space** | Green measurement lines showing horizontal space from rightmost packages |
 | **Multi-Selection** | Ctrl/Cmd+Click to select multiple packages, gold highlight |
@@ -147,16 +154,29 @@ The application uses a 10-color palette for client identification:
 
 ## 📝 Use Cases
 
-- **Logistics Planning** - Optimize truck/container loading
-- **Warehouse Management** - Plan storage layouts
-- **Shipping Optimization** - Minimize shipping costs by maximizing space
-- **Pallet Configuration** - Design efficient pallet arrangements
-- **Multi-Client Operations** - Keep different clients' packages separated
+- **Logistics Planning** - Optimize truck/container loading with improved space efficiency
+- **Warehouse Management** - Plan storage layouts with strict client segregation
+- **Shipping Optimization** - Minimize shipping costs by maximizing space utilization
+- **Multi-Client Operations** - Keep different clients' packages completely separated and accessible
+- **Pallet Configuration** - Design efficient pallet arrangements avoiding narrow unusable gaps
+- **Complex Constraints** - Handle packages with dimensions near bin limits efficiently
 - **Manual Reorganization** - Select and reposition multiple packages to optimize manually
+- **Space Analysis** - Visualize remaining space and identify packing inefficiencies
 
 ## 🔄 Version History
 
-### Version 1.2 (Current)
+### Version 1.3 (Current)
+- **Maximal Rectangles Algorithm** - Replaced Guillotine with more efficient Maximal Rectangles algorithm
+- **Best Short Side Fit** - Superior heuristic for minimizing wasted space
+- **Constraint-Based Sorting** - Packages near bin dimensions sorted first to handle most constraining items early
+- **Strict Client Segregation** - Sequential processing ensures no client interleaving, packages stay grouped
+- **Adjacency Enforcement** - 5M+ score bonus for touching same-client packages, ensuring tight clustering
+- **Unusable Space Detection** - Detects and heavily penalizes (<30cm gaps) orientations creating narrow slivers
+- **Smart Rectangle Splitting** - Maximal rectangles subdivided into 4 sub-rectangles (left, right, top, bottom)
+- **Rectangle Pruning & Merging** - Removes redundant free rectangles and merges adjacent spaces
+- **Enhanced Space Efficiency** - Significantly better packing density while maintaining client grouping
+
+### Version 1.2
 - **Unpacked Package Visualization** - Packages that don't fit are displayed below the bin with wrapping layout
 - **Alt+Click Placement** - Manually place unpacked packages into the bin with automatic position finding
 - **Smart Position Finding** - Automatically finds the best available position (corners first, then grid search, tries rotation)
@@ -207,8 +227,8 @@ This project was developed with significant assistance from AI tools (GitHub Cop
 
 ## ℹ️ Project Status
 
-This application is provided as-is with no planned future development. It is a complete, functional tool ready for use in its current state.
+This application is actively maintained and improved. Recent updates include a complete algorithm overhaul to Maximal Rectangles for superior space efficiency while maintaining strict client segregation.
 
 ---
 
-**Note**: All dimensions are in centimeters unless otherwise specified. The application automatically adds padding to entered dimensions for safety margins: 3cm for standard sizes 77 and 117, 5cm for all other sizes (50, 60, 70, 90, 100, 110).
+**Note**: All dimensions are in centimeters unless otherwise specified. The application automatically adds padding to entered dimensions for safety margins: 3cm for standard sizes 77 and 117, 5cm for all other sizes (50, 60, 70, 90, 100, 110). The Maximal Rectangles algorithm with constraint-based sorting ensures optimal packing while keeping client packages grouped together without interleaving.
