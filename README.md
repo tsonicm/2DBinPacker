@@ -42,7 +42,7 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
 - **Color-Coded Display** - Each client gets a unique color for easy identification
 
 ### Export & Statistics
-- **PDF Export** - A4 landscape format with color-coded layout, axis markers, and complete package list
+- **PDF Export** - A4 landscape format with color-coded layout, axis markers, and multi-column package list (single page)
 - **Real-Time Statistics** - Bin area, package area, utilization percentage, packed count
 - **Smart Unit Display** - Automatically converts to m² for large areas (≥10,000 cm²)
 
@@ -143,7 +143,7 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 | **Guide Lines** | 80cm (height) and 2m (width) visual markers |
 | **Axis Markers** | 0m start and total length end markers at top |
 | **Statistics** | Auto-converts to m² for areas ≥1 m² |
-| **PDF Export** | Professional A4 landscape format with axis markers |
+| **PDF Export** | Professional A4 landscape format with multi-column layout, everything on one page |
 
 ## 🎨 Color Palette
 
@@ -175,6 +175,8 @@ The application uses a 10-color palette for client identification:
 - **Smart Rectangle Splitting** - Maximal rectangles subdivided into 4 sub-rectangles (left, right, top, bottom)
 - **Rectangle Pruning & Merging** - Removes redundant free rectangles and merges adjacent spaces
 - **Enhanced Space Efficiency** - Significantly better packing density while maintaining client grouping
+- **Multi-Column PDF Layout** - Package list automatically distributes across multiple columns to fit everything on one page
+- **Single-Page PDF Export** - Optimized spacing and layout ensures all packages are visible without pagination
 
 ### Version 1.2
 - **Unpacked Package Visualization** - Packages that don't fit are displayed below the bin with wrapping layout

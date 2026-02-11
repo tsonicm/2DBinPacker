@@ -2464,24 +2464,38 @@
                 doc.text(item.refNo || `#${item.id}`, x + w / 2, y + h / 2, { align: 'center' });
             });
 
-            // Package list
+            // Package list - multi-column layout to fit on one page
             let listY = startY + scaledHeight + 10;
-            if (listY + 20 < pageHeight - margin) {
+            const availableHeight = pageHeight - margin - listY;
+            
+            if (availableHeight > 20 && packedPackages.length > 0) {
                 doc.setTextColor(0);
-                doc.setFontSize(12);
+                doc.setFontSize(10);
                 doc.text('Package List:', margin, listY);
-                listY += 6;
+                listY += 5;
 
-                doc.setFontSize(8);
+                doc.setFontSize(7);
+                const lineHeight = 4;
+                const maxLinesPerColumn = Math.floor((availableHeight - 8) / lineHeight);
+                const numColumns = Math.ceil(packedPackages.length / maxLinesPerColumn);
+                const columnWidth = contentWidth / numColumns;
+                
                 packedPackages.forEach((item, index) => {
-                    if (listY > pageHeight - margin - 5) {
-                        doc.addPage();
-                        listY = margin + 10;
-                    }
+                    const col = Math.floor(index / maxLinesPerColumn);
+                    const row = index % maxLinesPerColumn;
+                    const x = margin + col * columnWidth;
+                    const y = listY + row * lineHeight;
+                    
+                    // Draw color indicator
+                    const rgb = hexToRgb(getClientColor(item.client));
+                    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+                    doc.rect(x, y - 2.5, 2, 2, 'F');
+                    
+                    // Package text
+                    doc.setTextColor(0);
                     const clientText = item.client ? ` [${item.client}]` : '';
-                    const text = `${item.refNo || '#' + item.id}${clientText}: ${Math.round(item.w)} × ${Math.round(item.h)} cm${item.comment ? ' - ' + item.comment : ''}`;
-                    doc.text(text, margin, listY);
-                    listY += 5;
+                    const text = `${item.refNo || '#' + item.id}${clientText}: ${Math.round(item.w)}×${Math.round(item.h)}${item.comment ? ' - ' + item.comment : ''}`;
+                    doc.text(text, x + 3, y, { maxWidth: columnWidth - 5 });
                 });
             }
 
