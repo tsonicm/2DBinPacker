@@ -365,6 +365,7 @@
                 <!-- Packing Button -->
                 <div class="section">
                     <button class="button button-success" onclick="solvePacking()" style="font-size: 16px; padding: 12px;">Visualize Packing</button>
+                    <button id="calculateSpaceBtn" class="button button-primary" onclick="toggleRemainingSpace()" style="font-size: 14px; padding: 10px; margin-top: 8px;" disabled>Show Remaining Space</button>
                 </div>
 
                 <!-- Export -->
@@ -412,17 +413,27 @@
                             <span>Packages (Color by Client)</span>
                         </div>
                         <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-sm); border-top: 1px solid var(--color-border); font-size: 11px; color: var(--color-text-secondary);">
-                            <div style="margin-bottom: 4px;"><strong>Controls:</strong></div>
-                            <div>• Drag to move packages</div>
-                            <div>• <strong>Ctrl/Cmd + Click:</strong> Multi-select</div>
-                            <div style="padding-left: 12px; color: #6b7280;">- Selected packages highlighted in gold</div>
-                            <div style="padding-left: 12px; color: #6b7280;">- Drag to move group together</div>
+                            <div style="margin-bottom: 4px;"><strong>Placing Packages:</strong></div>
+                            <div>• <strong>Alt/Option + Click:</strong> Place unpacked</div>
+                            <div style="padding-left: 12px; color: #6b7280;">- Automatically finds best position</div>
+                            <div style="padding-left: 12px; color: #6b7280;">- Click packages shown below bin</div>
+                            
+                            <div style="margin-top: 8px; margin-bottom: 4px;"><strong>Moving Packages:</strong></div>
+                            <div>• Drag to move packages in bin</div>
                             <div>• <strong>Shift + Drag:</strong> Prevent overlap</div>
                             <div style="padding-left: 12px; color: #6b7280;">- Slides along obstacles</div>
-                            <div style="padding-left: 12px; color: #6b7280;">- Works with single or groups</div>
-                            <div>• <strong>Escape:</strong> Clear selection</div>
-                            <div>• Double-click to rotate</div>
-                            <div>• Press 'R' key to rotate (hover)</div>
+                            
+                            <div style="margin-top: 8px; margin-bottom: 4px;"><strong>Multi-Selection:</strong></div>
+                            <div>• <strong>Ctrl/Cmd + Click:</strong> Select multiple</div>
+                            <div style="padding-left: 12px; color: #6b7280;">- Selected packages highlighted in gold</div>
+                            <div style="padding-left: 12px; color: #6b7280;">- Drag to move group together</div>
+                            <div>• <strong>Esc:</strong> Clear selection</div>
+                            
+                            <div style="margin-top: 8px; margin-bottom: 4px;"><strong>Rotation:</strong></div>
+                            <div>• Double-click to rotate package</div>
+                            <div>• Press <strong>R</strong> key to rotate (on hover)</div>
+                            
+                            <div style="margin-top: 8px; margin-bottom: 4px;"><strong>View Controls:</strong></div>
                             <div>• Scroll to zoom (50%-500%)</div>
                             <div>• Drag empty space to pan</div>
                         </div>
@@ -480,6 +491,8 @@
         // Multi-selection state
         let selectedPackages = []; // Array of indices of selected packages
         let groupDragOffsets = []; // Relative positions of each package in the group
+        let isAltPressed = false; // Alt/Option key for placing unpacked packages
+        let showRemainingSpace = false; // Toggle for showing remaining space measurements
         
         // Client color mapping
         const clientColors = [
@@ -1028,6 +1041,96 @@
             return -1;
         }
         
+        // Get unpacked package at mouse position
+        function getUnpackedPackageAtPosition(mouseX, mouseY, offsetX, offsetY, basePixelPerCm, binHeight, binWidth, unpackedPackages) {
+            // Adjust for zoom and pan
+            const adjustedX = (mouseX - panX) / zoomLevel;
+            const adjustedY = (mouseY - panY) / zoomLevel;
+            
+            const pixelHeight = binHeight * basePixelPerCm;
+            const pixelWidth = binWidth * basePixelPerCm;
+            const unpackedStartY = offsetY + pixelHeight + 40 / zoomLevel;
+            const packageSpacing = 10 / zoomLevel;
+            const maxPackageHeight = 60 / zoomLevel;
+            const maxPackageWidth = 100 / zoomLevel;
+            
+            let currentX = offsetX;
+            let currentY = unpackedStartY;
+            let rowHeight = 0;
+            
+            for (let i = 0; i < unpackedPackages.length; i++) {
+                const pkg = unpackedPackages[i];
+                const pkgW = Math.min(pkg.length * basePixelPerCm, maxPackageWidth);
+                const pkgH = Math.min(pkg.width * basePixelPerCm, maxPackageHeight);
+                
+                // Check if package fits in current row, if not wrap to next row
+                if (currentX + pkgW > offsetX + pixelWidth && currentX > offsetX) {
+                    currentX = offsetX;
+                    currentY += rowHeight + packageSpacing;
+                    rowHeight = 0;
+                }
+                
+                // Track the tallest package in this row
+                rowHeight = Math.max(rowHeight, pkgH);
+                
+                if (adjustedX >= currentX && adjustedX <= currentX + pkgW &&
+                    adjustedY >= currentY && adjustedY <= currentY + pkgH) {
+                    return i;
+                }
+                
+                currentX += pkgW + packageSpacing;
+            }
+            return -1;
+        }
+        
+        // Find a suitable position for a package in the bin
+        function findSuitablePosition(pkg) {
+            const binWidth = parseFloat(document.getElementById('binWidth').value);
+            const binHeight = parseFloat(document.getElementById('binHeight').value);
+            
+            // Try common positions first: top-left, bottom-left, top-right
+            const testPositions = [
+                { x: 0, y: 0 },
+                { x: 0, y: binHeight - pkg.h },
+                { x: binWidth - pkg.w, y: 0 },
+                { x: binWidth - pkg.w, y: binHeight - pkg.h }
+            ];
+            
+            // Test common positions
+            for (const pos of testPositions) {
+                if (pos.x >= 0 && pos.y >= 0 && pos.x + pkg.w <= binWidth && pos.y + pkg.h <= binHeight) {
+                    if (!wouldOverlap(pos.x, pos.y, pkg.w, pkg.h, -1)) {
+                        return pos;
+                    }
+                }
+            }
+            
+            // Grid search for a valid position
+            const step = 5; // cm
+            for (let y = 0; y <= binHeight - pkg.h; y += step) {
+                for (let x = 0; x <= binWidth - pkg.w; x += step) {
+                    if (!wouldOverlap(x, y, pkg.w, pkg.h, -1)) {
+                        return { x, y };
+                    }
+                }
+            }
+            
+            // Try rotated
+            if (pkg.w !== pkg.h) {
+                const rotatedW = pkg.h;
+                const rotatedH = pkg.w;
+                for (let y = 0; y <= binHeight - rotatedH; y += step) {
+                    for (let x = 0; x <= binWidth - rotatedW; x += step) {
+                        if (!wouldOverlap(x, y, rotatedW, rotatedH, -1)) {
+                            return { x, y, rotated: true };
+                        }
+                    }
+                }
+            }
+            
+            return null;
+        }
+        
         // Rotate a package 90 degrees
         function rotatePackage(index) {
             if (index < 0 || index >= packedPackages.length) return;
@@ -1079,10 +1182,63 @@
 
             packedPackages = packItems();
             selectedPackages = []; // Clear selection when repacking
+            showRemainingSpace = false; // Reset the toggle
+            document.getElementById('calculateSpaceBtn').textContent = 'Show Remaining Space';
             drawPacking();
 
             // Update packed count
             document.getElementById('packedCount').textContent = packedPackages.length;
+            
+            // Enable the calculate space button
+            document.getElementById('calculateSpaceBtn').disabled = false;
+        }
+        
+        // Toggle remaining space visualization
+        function toggleRemainingSpace() {
+            showRemainingSpace = !showRemainingSpace;
+            const btn = document.getElementById('calculateSpaceBtn');
+            btn.textContent = showRemainingSpace ? 'Hide Remaining Space' : 'Show Remaining Space';
+            drawPacking();
+        }
+        
+        // Find rightmost packages (packages that don't have another package to their right)
+        function findRightmostPackages() {
+            const binWidth = parseFloat(document.getElementById('binWidth').value);
+            const rightmostPackages = [];
+            
+            // For each package, check if there's another package to its right
+            packedPackages.forEach((pkg, index) => {
+                let hasPackageToRight = false;
+                const pkgRightEdge = pkg.x + pkg.w;
+                
+                // Check if any other package starts within or after this package's right edge
+                // and overlaps vertically
+                for (let i = 0; i < packedPackages.length; i++) {
+                    if (i === index) continue;
+                    const otherPkg = packedPackages[i];
+                    
+                    // Check if other package is to the right (starts after this package's left edge)
+                    if (otherPkg.x >= pkg.x + 0.1) { // Small tolerance for floating point
+                        // Check vertical overlap
+                        const verticalOverlap = !(pkg.y + pkg.h <= otherPkg.y || otherPkg.y + otherPkg.h <= pkg.y);
+                        if (verticalOverlap) {
+                            hasPackageToRight = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // If no package to the right and there's space remaining
+                if (!hasPackageToRight && pkgRightEdge < binWidth - 0.1) {
+                    rightmostPackages.push({
+                        index: index,
+                        pkg: pkg,
+                        remainingSpace: binWidth - pkgRightEdge
+                    });
+                }
+            });
+            
+            return rightmostPackages;
         }
 
         // Draw the packing visualization
@@ -1265,16 +1421,129 @@
                 ctx.fillText(dimText, x + width / 2, y + height / 2 + scaledFontSize / 2);
             });
 
-            // Draw unpacked items as legend at bottom
-            const unpackedIds = packages
-                .map(p => p.id)
-                .filter(id => !packedPackages.find(item => item.id === id));
+            // Draw unpacked items as visual packages below the bin
+            const unpackedPackages = packages.filter(p => !packedPackages.find(item => item.id === p.id));
 
-            if (unpackedIds.length > 0) {
-                ctx.fillStyle = '#ef4444';
-                ctx.font = `${12 / zoomLevel}px Arial`;
+            if (unpackedPackages.length > 0) {
+                const unpackedStartY = offsetY + pixelHeight + 40 / zoomLevel;
+                let currentX = offsetX;
+                let currentY = unpackedStartY;
+                const packageSpacing = 10 / zoomLevel;
+                const maxPackageHeight = 60 / zoomLevel;
+                const maxPackageWidth = 100 / zoomLevel;
+                let rowHeight = 0;
+                
+                // Label
+                ctx.fillStyle = '#6b7280';
+                ctx.font = `bold ${12 / zoomLevel}px Arial`;
                 ctx.textAlign = 'left';
-                ctx.fillText(`Unpacked: #${unpackedIds.join(', #')}`, offsetX, offsetY + pixelHeight + 25);
+                ctx.fillText('Unpacked Packages (Alt+Click to place):', offsetX, offsetY + pixelHeight + 30 / zoomLevel);
+                
+                // Draw each unpacked package with wrapping
+                unpackedPackages.forEach((pkg) => {
+                    const displayW = Math.min(pkg.length * basePixelPerCm, maxPackageWidth);
+                    const displayH = Math.min(pkg.width * basePixelPerCm, maxPackageHeight);
+                    
+                    // Check if package fits in current row, if not wrap to next row
+                    if (currentX + displayW > offsetX + pixelWidth && currentX > offsetX) {
+                        currentX = offsetX;
+                        currentY += rowHeight + packageSpacing;
+                        rowHeight = 0;
+                    }
+                    
+                    // Track the tallest package in this row
+                    rowHeight = Math.max(rowHeight, displayH);
+                    
+                    // Get client-specific color
+                    const clientColor = getClientColor(pkg.client);
+                    
+                    // Background with semi-transparency to indicate unpacked
+                    ctx.globalAlpha = 0.7;
+                    ctx.fillStyle = clientColor;
+                    ctx.fillRect(currentX, currentY, displayW, displayH);
+                    ctx.globalAlpha = 1.0;
+                    
+                    // Border
+                    const darkerColor = adjustBrightness(clientColor, -30);
+                    ctx.strokeStyle = darkerColor;
+                    ctx.lineWidth = 2 / zoomLevel;
+                    ctx.strokeRect(currentX, currentY, displayW, displayH);
+                    
+                    // Text
+                    ctx.fillStyle = '#ffffff';
+                    const fontSize = Math.min(10 / zoomLevel, displayH / 3);
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(pkg.refNo || `#${pkg.id}`, currentX + displayW / 2, currentY + displayH / 2 - fontSize / 2);
+                    
+                    // Dimensions
+                    ctx.font = `${fontSize}px Arial`;
+                    const dimText = `${Math.round(pkg.length)}×${Math.round(pkg.width)}`;
+                    ctx.fillText(dimText, currentX + displayW / 2, currentY + displayH / 2 + fontSize / 2);
+                    
+                    currentX += displayW + packageSpacing;
+                });
+            }
+            
+            // Draw remaining space measurements if enabled
+            if (showRemainingSpace && packedPackages.length > 0) {
+                const rightmostPackages = findRightmostPackages();
+                
+                ctx.strokeStyle = '#10b981'; // Green color
+                ctx.fillStyle = '#10b981';
+                ctx.lineWidth = 2 / zoomLevel;
+                ctx.setLineDash([5 / zoomLevel, 3 / zoomLevel]);
+                ctx.font = `bold ${11 / zoomLevel}px Arial`;
+                ctx.textAlign = 'center';
+                
+                rightmostPackages.forEach(item => {
+                    const pkg = item.pkg;
+                    const pkgRightEdge = offsetX + (pkg.x + pkg.w) * basePixelPerCm;
+                    const binRightEdge = offsetX + pixelWidth;
+                    const pkgY = offsetY + pkg.y * basePixelPerCm;
+                    const pkgH = pkg.h * basePixelPerCm;
+                    const midY = pkgY + pkgH / 2;
+                    
+                    // Draw horizontal line
+                    ctx.beginPath();
+                    ctx.moveTo(pkgRightEdge, midY);
+                    ctx.lineTo(binRightEdge, midY);
+                    ctx.stroke();
+                    
+                    // Draw end caps
+                    const capHeight = 8 / zoomLevel;
+                    ctx.setLineDash([]);
+                    ctx.beginPath();
+                    ctx.moveTo(pkgRightEdge, midY - capHeight);
+                    ctx.lineTo(pkgRightEdge, midY + capHeight);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(binRightEdge, midY - capHeight);
+                    ctx.lineTo(binRightEdge, midY + capHeight);
+                    ctx.stroke();
+                    
+                    // Draw measurement text
+                    const textX = (pkgRightEdge + binRightEdge) / 2;
+                    const textY = midY - 6 / zoomLevel;
+                    
+                    // Background for text
+                    ctx.fillStyle = '#ffffff';
+                    ctx.globalAlpha = 0.9;
+                    const spaceText = `${item.remainingSpace.toFixed(1)} cm`;
+                    const textWidth = ctx.measureText(spaceText).width;
+                    ctx.fillRect(textX - textWidth / 2 - 3 / zoomLevel, textY - 10 / zoomLevel, textWidth + 6 / zoomLevel, 14 / zoomLevel);
+                    ctx.globalAlpha = 1.0;
+                    
+                    // Text
+                    ctx.fillStyle = '#10b981';
+                    ctx.fillText(spaceText, textX, textY);
+                    
+                    ctx.setLineDash([5 / zoomLevel, 3 / zoomLevel]);
+                });
+                
+                ctx.setLineDash([]);
             }
 
             // Draw axis labels
@@ -1342,8 +1611,6 @@
         const canvas = document.getElementById('packingCanvas');
 
         canvas.addEventListener('mousedown', (e) => {
-            if (packedPackages.length === 0) return;
-            
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
@@ -1363,6 +1630,37 @@
             const pixelHeight = binHeight * basePixelPerCm;
             const offsetX = (containerWidth - pixelWidth - margin) / 2 + margin / 2;
             const offsetY = (containerHeight - pixelHeight - margin) / 2 + margin / 2;
+            
+            // Check if Alt+clicking on an unpacked package
+            const unpackedPackages = packages.filter(p => !packedPackages.find(item => item.id === p.id));
+            if (isAltPressed && unpackedPackages.length > 0) {
+                const unpackedIndex = getUnpackedPackageAtPosition(mouseX, mouseY, offsetX, offsetY, basePixelPerCm, binHeight, binWidth, unpackedPackages);
+                if (unpackedIndex >= 0) {
+                    const pkg = unpackedPackages[unpackedIndex];
+                    const position = findSuitablePosition({ w: pkg.length, h: pkg.width });
+                    
+                    if (position) {
+                        // Add to packed packages
+                        packedPackages.push({
+                            id: pkg.id,
+                            refNo: pkg.refNo,
+                            x: position.x,
+                            y: position.y,
+                            w: position.rotated ? pkg.width : pkg.length,
+                            h: position.rotated ? pkg.length : pkg.width,
+                            client: pkg.client,
+                            comment: pkg.comment
+                        });
+                        document.getElementById('packedCount').textContent = packedPackages.length;
+                        drawPacking();
+                    } else {
+                        alert('Cannot find a suitable position for this package in the bin');
+                    }
+                    return;
+                }
+            }
+            
+            if (packedPackages.length === 0) return;
             
             // Check if clicking on a package
             const pkgIndex = getPackageAtPosition(mouseX, mouseY, offsetX, offsetY, basePixelPerCm);
@@ -1684,6 +1982,10 @@
             if (e.key === 'Control' || e.key === 'Meta') {  // Ctrl on Windows/Linux, Cmd on Mac
                 isCtrlPressed = true;
             }
+            if (e.key === 'Alt') {  // Alt/Option key
+                isAltPressed = true;
+                canvas.style.cursor = 'copy';
+            }
             if (e.key === 'r' || e.key === 'R') {
                 if (hoveredPackageIndex >= 0) {
                     rotatePackage(hoveredPackageIndex);
@@ -1704,6 +2006,10 @@
             }
             if (e.key === 'Control' || e.key === 'Meta') {
                 isCtrlPressed = false;
+            }
+            if (e.key === 'Alt') {
+                isAltPressed = false;
+                canvas.style.cursor = 'crosshair';
             }
         });
 

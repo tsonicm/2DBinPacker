@@ -19,6 +19,9 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
 - **Guillotine Bin Packing Algorithm** - Best Area Fit heuristic for optimal space utilization
 - **Client-Based Segregation** - Automatically groups and color-codes packages by client
 - **Interactive Visualization** - Full canvas with zoom (50%-500%), pan, and drag capabilities
+- **Unpacked Package Display** - Visual representation of unpacked packages below the bin with wrapping layout
+- **Alt+Click Placement** - Manually place unpacked packages into the bin with automatic position finding
+- **Remaining Space Visualization** - Toggle display of remaining horizontal space for each rightmost package
 - **Multi-Selection & Group Dragging** - Select multiple packages with Ctrl/Cmd+Click and move them together
 - **Smart Collision Prevention** - Hold Shift while dragging (single or groups) to prevent package overlap
 - **Package Rotation** - Double-click or press 'R' to rotate packages 90°
@@ -62,6 +65,7 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
 Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 
 ### Interactive Controls
+- **Alt/Option + Click** - Place unpacked packages (shown below bin) into the bin automatically
 - **Drag packages** - Click and drag to reposition
 - **Ctrl/Cmd + Click** - Multi-select packages (gold highlight shows selection)
 - **Group Drag** - Drag any selected package to move entire group together
@@ -72,6 +76,7 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 - **Scroll** - Zoom in/out (50%-500%)
 - **Drag empty space** - Pan around the canvas
 - **Reset button** - Return to 100% zoom and center view
+- **Show Remaining Space** - Toggle display of remaining horizontal space measurements
 
 ### Example Test Suite (1360×245 bin)
 ```
@@ -123,6 +128,8 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 | **Dimensions** | Integer display with smart padding (3cm for 77/117, 5cm for others) |
 | **Reference Numbers** | Last 6 digits of EAN13, leading zeros removed |
 | **Client Grouping** | 10 distinct colors, segregated packing |
+| **Unpacked Display** | Visual packages below bin, wrapping horizontally, Alt+Click to place |
+| **Remaining Space** | Green measurement lines showing horizontal space from rightmost packages |
 | **Multi-Selection** | Ctrl/Cmd+Click to select multiple packages, gold highlight |
 | **Group Operations** | Move multiple packages together, maintaining formation |
 | **Collision Detection** | Shift-drag with sliding (works with single packages or groups) |
@@ -150,6 +157,13 @@ The application uses a 10-color palette for client identification:
 ## 🔄 Version History
 
 ### Version 1.2 (Current)
+- **Unpacked Package Visualization** - Packages that don't fit are displayed below the bin with wrapping layout
+- **Alt+Click Placement** - Manually place unpacked packages into the bin with automatic position finding
+- **Smart Position Finding** - Automatically finds the best available position (corners first, then grid search, tries rotation)
+- **Remaining Space Measurements** - Toggle visualization showing horizontal space from each rightmost package to bin edge
+- **Dynamic Space Display** - Green measurement lines with distance labels (in cm) update as packages are moved
+- **Multi-Row Detection** - Intelligently identifies rightmost package in each row for accurate measurements
+- **Enhanced Legend** - Reorganized controls with clear sections for placing, moving, multi-selection, rotation, and view controls
 - **Horizontal Axis Markers** - 0m and final bin length markers at top of bin (both visualizer and PDF)
 - **Landscape PDF Export** - Changed from portrait to landscape orientation for better bin visualization
 - **Improved Print Layout** - Axis markers help with physical measurements during loading
