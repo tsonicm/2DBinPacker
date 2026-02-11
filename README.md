@@ -114,10 +114,11 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 - **Maximal Rectangles Method** with Best Short Side Fit heuristic
 - **Sequential Client Processing** - Each client's packages are packed completely before moving to the next client
 - **Constraint-Based Sorting** - Large packages near bin dimensions are placed first to minimize unusable space
-- **Strict Adjacency Enforcement** - Packages must touch same-client packages (5M+ score bonus for touching)
-- **Unusable Space Detection** - Heavily penalizes orientations creating gaps <30cm (-50k to -100k penalties)
+- **Strict Adjacency Enforcement** - Packages must touch same-client packages (50k+ score bonus for touching)
+- **Rotation Optimization** - In height-constrained bins, strongly favors orientations that achieve >90% height utilization (up to 20k bonus for rotation)
+- **Unusable Space Detection** - Heavily penalizes orientations creating gaps <30cm (-500 to -1000 penalties)
 - **Free Rectangle Management** - Maximal rectangles split into 4 sub-rectangles, with pruning and merging
-- **Automatic Rotation** - Tests both orientations, rejecting those that create narrow slivers
+- **Smart Orientation Selection** - Tests both orientations, with tall packages (h>w) preferred in height-constrained bins
 
 ### Browser Compatibility
 - Chrome/Edge (recommended)
@@ -129,9 +130,9 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 
 | Feature | Description |
 |---------|-------------|
-| **Algorithm** | Maximal Rectangles with Best Short Side Fit, constraint-based sorting |
-| **Client Segregation** | Sequential processing, no interleaving, strict adjacency enforcement (5M+ bonus) |
-| **Space Optimization** | Detects unusable gaps (<30cm), penalizes narrow slivers, merges adjacent free rects |
+| **Algorithm** | Maximal Rectangles with Best Short Side Fit, constraint-based sorting, rotation optimization |
+| **Client Segregation** | Sequential processing, no interleaving, strict adjacency enforcement (50k+ bonus) |
+| **Space Optimization** | Detects unusable gaps (<30cm), penalizes narrow slivers, merges adjacent free rects, >90% height utilization bonus |
 | **Dimensions** | Integer display with smart padding (3cm for 77/117, 5cm for others) |
 | **Reference Numbers** | Last 6 digits of EAN13, leading zeros removed |
 | **Client Grouping** | 10 distinct colors, packages must touch same-client packages |
@@ -170,8 +171,10 @@ The application uses a 10-color palette for client identification:
 - **Best Short Side Fit** - Superior heuristic for minimizing wasted space
 - **Constraint-Based Sorting** - Packages near bin dimensions sorted first to handle most constraining items early
 - **Strict Client Segregation** - Sequential processing ensures no client interleaving, packages stay grouped
-- **Adjacency Enforcement** - 5M+ score bonus for touching same-client packages, ensuring tight clustering
-- **Unusable Space Detection** - Detects and heavily penalizes (<30cm gaps) orientations creating narrow slivers
+- **Optimized Scoring System** - Rescaled to smaller values (1k base) for better balance between competing criteria
+- **Rotation Optimization** - Strongly favors orientations achieving >90% bin height in constrained dimensions (up to 20k bonus)
+- **Adjacency Enforcement** - 50k+ score bonus for touching same-client packages, ensuring tight clustering
+- **Unusable Space Detection** - Detects and penalizes (<30cm gaps) orientations creating narrow slivers
 - **Smart Rectangle Splitting** - Maximal rectangles subdivided into 4 sub-rectangles (left, right, top, bottom)
 - **Rectangle Pruning & Merging** - Removes redundant free rectangles and merges adjacent spaces
 - **Enhanced Space Efficiency** - Significantly better packing density while maintaining client grouping
@@ -233,4 +236,4 @@ This application is actively maintained and improved. Recent updates include a c
 
 ---
 
-**Note**: All dimensions are in centimeters unless otherwise specified. The application automatically adds padding to entered dimensions for safety margins: 3cm for standard sizes 77 and 117, 5cm for all other sizes (50, 60, 70, 90, 100, 110). The Maximal Rectangles algorithm with constraint-based sorting ensures optimal packing while keeping client packages grouped together without interleaving.
+**Note**: All dimensions are in centimeters unless otherwise specified. The application automatically adds padding to entered dimensions for safety margins: 3cm for standard sizes 77 and 117, 5cm for all other sizes (50, 60, 70, 90, 100, 110). The Maximal Rectangles algorithm with constraint-based sorting and rotation optimization ensures optimal packing while keeping client packages grouped together without interleaving. In height-constrained bins, the algorithm strongly favors tall package orientations that efficiently utilize the vertical dimension.

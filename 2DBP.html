@@ -801,24 +801,30 @@
             });
 
             // Sort each group by constraint factor (most constrained first)
-            // Packages close to bin dimensions are most constraining and should go first
+            // Prioritize packages where one dimension is close to a bin dimension
             Object.values(clientGroups).forEach(group => {
                 group.sort((a, b) => {
-                    // Calculate how constraining each package is
+                    // Calculate the maximum dimension ratio for each package
+                    // A package with one dimension close to a bin dimension is highly constraining
                     const constraintA = Math.max(
-                        Math.min(a.w / binWidth, a.h / binHeight),
-                        Math.min(a.h / binWidth, a.w / binHeight)
+                        a.w / binWidth,  // Width using bin width
+                        a.w / binHeight, // Width using bin height (if rotated)
+                        a.h / binWidth,  // Height using bin width (if rotated)
+                        a.h / binHeight  // Height using bin height
                     );
                     const constraintB = Math.max(
-                        Math.min(b.w / binWidth, b.h / binHeight),
-                        Math.min(b.h / binWidth, b.w / binHeight)
+                        b.w / binWidth,
+                        b.w / binHeight,
+                        b.h / binWidth,
+                        b.h / binHeight
                     );
                     
-                    // If constraint factors are similar, sort by area
-                    if (Math.abs(constraintA - constraintB) < 0.1) {
+                    // If constraint factors are similar (within 5%), sort by area
+                    if (Math.abs(constraintA - constraintB) < 0.05) {
                         return (b.w * b.h) - (a.w * a.h);
                     }
                     
+                    // Place more constrained packages first
                     return constraintB - constraintA;
                 });
             });
@@ -1002,36 +1008,68 @@
             const shortSideFit = Math.min(leftoverHoriz, leftoverVert);
             const longSideFit = Math.max(leftoverHoriz, leftoverVert);
             
-            // Base score: prefer tight fits (this is the PRIMARY criterion)
-            let score = 100000 - (shortSideFit * 100 + longSideFit * 10);
+            // Base score: prefer tight fits (rescaled to smaller numbers)
+            let score = 1000 - (shortSideFit * 1 + longSideFit * 0.1);
             
-            // CRITICAL: Heavily penalize orientations that create unusably narrow spaces
-            const minUsableSpace = 30; // Minimum usable space in cm
-            
-            // Check if this placement would create narrow unusable strips
-            if (shortSideFit > 0 && shortSideFit < minUsableSpace) {
-                // This creates a strip too narrow to use - heavy penalty
-                score -= 50000 * (minUsableSpace - shortSideFit);
+            // ROTATION BONUS: In height-constrained bins, favor orientations that reach >90% bin height
+            if (binHeight < binWidth) {
+                const resultingBinHeight = rect.y + h;
+                const binHeightUtilization = resultingBinHeight / binHeight;
+                
+                // VERY STRONG bonus for achieving 90-100% bin height utilization
+                if (binHeightUtilization >= 0.90 && binHeightUtilization <= 1.0) {
+                    // This placement efficiently uses the constrained dimension
+                    score += 10000; // Massive flat bonus
+                    
+                    // Even more bonus if rotation achieved this
+                    if (rotated) {
+                        score += 10000; // Another massive bonus for rotation
+                    }
+                }
+                
+                // General preference for taller orientations
+                const heightDiff = h - w;
+                score += heightDiff * 10; // Strong proportional bonus
             }
             
-            // Additional penalty if the package takes up most of a dimension
-            // leaving a sliver that's hard to use
+            // CRITICAL: Penalize orientations that create unusably narrow spaces
+            // BUT favor efficient use of the constrained dimension
+            const minUsableSpace = 30; // Minimum usable space in cm
+            
+            // Calculate how efficiently this placement uses each dimension
             const heightRatio = h / rect.h;
             const widthRatio = w / rect.w;
             
-            if (heightRatio > 0.85 && leftoverVert < minUsableSpace && leftoverVert > 0) {
-                // Takes up most of the height, leaving narrow bottom strip
-                score -= 100000;
-            }
-            if (widthRatio > 0.85 && leftoverHoriz < minUsableSpace && leftoverHoriz > 0) {
-                // Takes up most of the width, leaving narrow right strip  
-                score -= 100000;
+            // Check if this placement would create narrow strips
+            if (shortSideFit > 0 && shortSideFit < minUsableSpace) {
+                // Check if we're efficiently using the bin's constrained dimension
+                // If using >90% of available space in a dimension, small gaps are acceptable
+                const efficientHeightUse = heightRatio > 0.90;
+                const efficientWidthUse = widthRatio > 0.90;
+                
+                if (efficientHeightUse || efficientWidthUse) {
+                    // This is efficient packing - give a BONUS for high utilization
+                    // The smaller the gap, the better
+                    score += 500 * (1 - shortSideFit / minUsableSpace);
+                } else {
+                    // Poor utilization - apply penalty for narrow strips
+                    score -= 500 * (minUsableSpace - shortSideFit);
+                }
             }
             
-            // Secondary preference for top-left positions (much lighter weight)
-            // This acts as a tie-breaker when fits are similar
-            score -= rect.y * 1;   // Light penalty for lower positions
-            score -= rect.x * 0.5; // Very light penalty for rightward positions
+            // Additional penalty for medium-utilization that leaves awkward gaps
+            if (heightRatio > 0.70 && heightRatio < 0.90 && leftoverVert < minUsableSpace && leftoverVert > 0) {
+                // Moderate height usage leaving small gap - mild penalty
+                score -= 300;
+            }
+            if (widthRatio > 0.70 && widthRatio < 0.90 && leftoverHoriz < minUsableSpace && leftoverHoriz > 0) {
+                // Moderate width usage leaving small gap - mild penalty
+                score -= 300;
+            }
+            
+            // Secondary preference for top-left positions (lighter weight)
+            score -= rect.y * 0.01;   // Light penalty for lower positions
+            score -= rect.x * 0.005; // Very light penalty for rightward positions
             
             // For first item of client, use top-left + best fit
             if (isFirstItem || clientPackages.length === 0) {
@@ -1102,14 +1140,14 @@
                 }
             });
             
-            // MASSIVE bonus for touching same-client packages
+            // MASSIVE bonus for touching same-client packages (rescaled)
             if (maxTouching > 0) {
                 // More touching length = better score
                 // Strong adjacency bonus to keep clients clustered
-                score += 5000000 + maxTouching * 5000;
+                score += 50000 + maxTouching * 50;
             } else {
                 // If not touching, heavily penalize but still allow with distance penalty
-                score -= 10000000 + minDistance * 10000;
+                score -= 100000 + minDistance * 100;
             }
             
             return score;
