@@ -42,7 +42,14 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
 - **Color-Coded Display** - Each client gets a unique color for easy identification
 
 ### Export & Statistics
-- **PDF Export** - A4 landscape format with color-coded layout, axis markers, and multi-column package list (single page)
+- **PDF Export** - A4 landscape format optimized for high-quality printing with:
+  - **Large, readable fonts** (9-16pt for packages, 10pt for list items)
+  - **Intelligent text wrapping** for long reference numbers
+  - **Grayscale output** optimized for black & white printing
+  - **Distinct shading** for different clients (light to dark gray)
+  - **Bold borders** (0.8mm) for clear package definition
+  - **Black text** on light backgrounds for maximum visibility
+  - Multi-column package list on single page
 - **Real-Time Statistics** - Bin area, package area, utilization percentage, packed count
 - **Smart Unit Display** - Automatically converts to m² for large areas (≥10,000 cm²)
 
@@ -144,7 +151,7 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 | **Guide Lines** | 80cm (height) and 2m (width) visual markers |
 | **Axis Markers** | 0m start and total length end markers at top |
 | **Statistics** | Auto-converts to m² for areas ≥1 m² |
-| **PDF Export** | Professional A4 landscape format with multi-column layout, everything on one page |
+| **PDF Export** | Professional A4 landscape format with large fonts (9-16pt), text wrapping, grayscale for B&W printing, bold 0.8mm borders, multi-column layout on single page |
 
 ## 🎨 Color Palette
 
@@ -163,10 +170,19 @@ The application uses a 10-color palette for client identification:
 - **Complex Constraints** - Handle packages with dimensions near bin limits efficiently
 - **Manual Reorganization** - Select and reposition multiple packages to optimize manually
 - **Space Analysis** - Visualize remaining space and identify packing inefficiencies
+- **Print Documentation** - Generate high-quality B&W or color PDFs for warehouse floor use with clear, readable labels
 
 ## 🔄 Version History
 
-### Version 1.3 (Current)
+### Version 1.4 (Current)
+- **Enhanced PDF Printing** - Significantly improved text readability with larger fonts (9-16pt for packages, 10-13pt for list)
+- **Intelligent Text Wrapping** - Package labels automatically wrap to fit within package dimensions
+- **Black & White Printing Optimization** - Grayscale color scheme with distinct shading for different clients
+- **Bold Visual Definition** - Thicker borders (0.8mm) and black text on light backgrounds for maximum clarity
+- **Print-Ready Output** - Professional-looking PDFs that work perfectly with both color and B&W printers
+- **Better Contrast** - Optimized shade distribution (240-100 grayscale range) ensures clear differentiation between clients
+
+### Version 1.3
 - **Maximal Rectangles Algorithm** - Replaced Guillotine with more efficient Maximal Rectangles algorithm
 - **Best Short Side Fit** - Superior heuristic for minimizing wasted space
 - **Constraint-Based Sorting** - Packages near bin dimensions sorted first to handle most constraining items early

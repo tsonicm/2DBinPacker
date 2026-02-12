@@ -2479,27 +2479,89 @@
             doc.line(startX + scaledWidth, startY - 3, startX + scaledWidth, startY);
             doc.text(`${finalLengthMeters}m`, startX + scaledWidth - 5, startY - 5);
 
+            // Helper function to wrap text to fit within width
+            const wrapText = (text, maxWidth, fontSize) => {
+                doc.setFontSize(fontSize);
+                const textWidth = doc.getTextWidth(text);
+                
+                if (textWidth <= maxWidth) {
+                    return [text];
+                }
+                
+                // Split text and wrap
+                const words = text.split('');
+                const lines = [];
+                let currentLine = '';
+                
+                for (let i = 0; i < words.length; i++) {
+                    const testLine = currentLine + words[i];
+                    const testWidth = doc.getTextWidth(testLine);
+                    
+                    if (testWidth > maxWidth && currentLine.length > 0) {
+                        lines.push(currentLine);
+                        currentLine = words[i];
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                
+                if (currentLine.length > 0) {
+                    lines.push(currentLine);
+                }
+                
+                return lines;
+            };
+
+            // Helper: Get grayscale value for client (for B&W printing)
+            const clientGrayscaleMap = {};
+            const getClientGrayscale = (client) => {
+                if (!client) return 220; // Light gray for no client
+                if (!clientGrayscaleMap[client]) {
+                    const clients = Object.keys(clientGrayscaleMap);
+                    // Cycle through grayscale values: 240 (very light), 200, 160, 120 (darker)
+                    const grayscales = [240, 200, 160, 120, 180, 140, 100, 220, 210, 150];
+                    clientGrayscaleMap[client] = grayscales[clients.length % grayscales.length];
+                }
+                return clientGrayscaleMap[client];
+            };
+
             // Draw packages
-            doc.setLineWidth(0.3);
+            doc.setLineWidth(0.8); // Thicker border for better B&W printing
             packedPackages.forEach(item => {
                 const x = startX + (item.x / binWidth) * scaledWidth;
                 const y = startY + (item.y / binHeight) * scaledHeight;
                 const w = (item.w / binWidth) * scaledWidth;
                 const h = (item.h / binHeight) * scaledHeight;
 
-                // Get client color
-                const clientColor = getClientColor(item.client);
-                const rgb = hexToRgb(clientColor);
+                // Use grayscale for B&W printing
+                const grayValue = getClientGrayscale(item.client);
                 
-                // Fill
-                doc.setFillColor(rgb.r, rgb.g, rgb.b);
-                doc.setDrawColor(Math.max(0, rgb.r - 50), Math.max(0, rgb.g - 50), Math.max(0, rgb.b - 50));
+                // Fill with grayscale
+                doc.setFillColor(grayValue, grayValue, grayValue);
+                doc.setDrawColor(0, 0, 0); // Strong black border
                 doc.rect(x, y, w, h, 'FD');
 
-                // Text
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(Math.max(6, Math.min(10, Math.min(w, h) / 5)));
-                doc.text(item.refNo || `#${item.id}`, x + w / 2, y + h / 2, { align: 'center' });
+                // Text with wrapping - use black for better visibility
+                doc.setTextColor(0, 0, 0);
+                const fontSize = Math.max(9, Math.min(16, Math.min(w, h) / 3.5));
+                doc.setFontSize(fontSize);
+                
+                const text = item.refNo || `#${item.id}`;
+                const maxTextWidth = w - 2; // Leave 1mm padding on each side
+                const lines = wrapText(text, maxTextWidth, fontSize);
+                
+                // Calculate line height and total text height
+                const lineHeight = fontSize * 0.4; // Line spacing in mm
+                const totalTextHeight = lines.length * lineHeight;
+                
+                // Start drawing from vertical center, accounting for total height
+                let textY = y + h / 2 - totalTextHeight / 2 + lineHeight / 2;
+                
+                // Draw each line
+                lines.forEach(line => {
+                    doc.text(line, x + w / 2, textY, { align: 'center' });
+                    textY += lineHeight;
+                });
             });
 
             // Package list - multi-column layout to fit on one page
@@ -2508,12 +2570,12 @@
             
             if (availableHeight > 20 && packedPackages.length > 0) {
                 doc.setTextColor(0);
-                doc.setFontSize(10);
+                doc.setFontSize(13);
                 doc.text('Package List:', margin, listY);
-                listY += 5;
+                listY += 6;
 
-                doc.setFontSize(7);
-                const lineHeight = 4;
+                doc.setFontSize(10);
+                const lineHeight = 5.5;
                 const maxLinesPerColumn = Math.floor((availableHeight - 8) / lineHeight);
                 const numColumns = Math.ceil(packedPackages.length / maxLinesPerColumn);
                 const columnWidth = contentWidth / numColumns;
@@ -2524,10 +2586,12 @@
                     const x = margin + col * columnWidth;
                     const y = listY + row * lineHeight;
                     
-                    // Draw color indicator
-                    const rgb = hexToRgb(getClientColor(item.client));
-                    doc.setFillColor(rgb.r, rgb.g, rgb.b);
-                    doc.rect(x, y - 2.5, 2, 2, 'F');
+                    // Draw grayscale indicator with border for B&W printing
+                    const grayValue = getClientGrayscale(item.client);
+                    doc.setFillColor(grayValue, grayValue, grayValue);
+                    doc.setDrawColor(0, 0, 0);
+                    doc.setLineWidth(0.3);
+                    doc.rect(x, y - 2.5, 2, 2, 'FD');
                     
                     // Package text
                     doc.setTextColor(0);
