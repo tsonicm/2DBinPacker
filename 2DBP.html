@@ -1727,8 +1727,8 @@
             ctx.stroke();
             ctx.fillText(`${finalLengthMeters}m`, offsetX + pixelWidth, offsetY - 10 / zoomLevel);
 
-            // Draw packed items
-            packedPackages.forEach((item, index) => {
+            // Draw packed items - draw non-selected first, then selected on top
+            const drawPackage = (item, index) => {
                 const x = offsetX + item.x * basePixelPerCm;
                 const y = offsetY + item.y * basePixelPerCm;
                 const width = item.w * basePixelPerCm;
@@ -1780,6 +1780,20 @@
                 ctx.font = `${scaledFontSize * 0.8}px Arial`;
                 const dimText = `${Math.round(item.w)}×${Math.round(item.h)}`;
                 ctx.fillText(dimText, x + width / 2, y + height / 2 + scaledFontSize / 2);
+            };
+            
+            // Draw non-selected packages first
+            packedPackages.forEach((item, index) => {
+                if (!selectedPackages.includes(index)) {
+                    drawPackage(item, index);
+                }
+            });
+            
+            // Draw selected packages on top
+            selectedPackages.forEach(index => {
+                if (index >= 0 && index < packedPackages.length) {
+                    drawPackage(packedPackages[index], index);
+                }
             });
 
             // Draw unpacked items as visual packages below the bin
