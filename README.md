@@ -41,6 +41,13 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
 - **Dynamic Scaling** - Text and elements scale intelligently with zoom level
 - **Color-Coded Display** - Each client gets a unique color for easy identification
 
+### User Interface
+- **Canvas-Only View** - Full-screen visualization area without titles or unnecessary padding for maximum space
+- **Placeholder State** - Clear instructions displayed before first visualization
+- **Progressive Disclosure** - Canvas and zoom controls appear only after running visualization
+- **Mobile Optimized** - Responsive design with reduced padding and better viewport handling on mobile devices
+- **Clean Layout** - Streamlined interface puts focus on the visualization
+
 ### Export & Statistics
 - **PDF Export** - A4 landscape format optimized for high-quality printing with:
   - **Large, readable fonts** (9-16pt for packages, 10pt for list items)
@@ -62,7 +69,7 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
    - **Manual Entry**: Fill in reference number, dimensions, and client
    - **Bulk Import**: Paste tab-separated data in the format shown
    - **Edit Existing**: Modify packages after adding them
-4. Click "Visualize Packing" to see the optimized layout
+4. Click "Visualize Packing" to see the optimized layout in the visualization area
 
 ### Bulk Import Format
 ```
@@ -152,6 +159,7 @@ Format: `refNo [tab] lengthxwidth [tab] client`
 | **Axis Markers** | 0m start and total length end markers at top |
 | **Statistics** | Auto-converts to m² for areas ≥1 m² |
 | **PDF Export** | Professional A4 landscape format with large fonts (9-16pt), text wrapping, grayscale for B&W printing, bold 0.8mm borders, multi-column layout on single page |
+| **UI/UX** | Canvas-only view, placeholder state, progressive disclosure, mobile-optimized responsive design |
 
 ## 🎨 Color Palette
 
@@ -174,7 +182,16 @@ The application uses a 10-color palette for client identification:
 
 ## 🔄 Version History
 
-### Version 1.4 (Current)
+### Version 1.5 (Current)
+- **Canvas-Only Visualization** - Removed title from visualization panel for maximum space utilization
+- **Placeholder State** - Added informative placeholder with icon and instructions before first visualization
+- **Progressive Interface** - Canvas and zoom controls only appear after clicking "Visualize Packing"
+- **Zero Wasted Space** - Removed all unnecessary padding from visualization container
+- **Mobile Optimization** - Improved responsive design with better padding and viewport handling on mobile devices
+- **Reset to Placeholder** - Clear All button now properly resets the UI to initial placeholder state
+- **Streamlined Layout** - Cleaner interface focusing attention on the visualization area
+
+### Version 1.4
 - **Enhanced PDF Printing** - Significantly improved text readability with larger fonts (9-16pt for packages, 10-13pt for list)
 - **Intelligent Text Wrapping** - Package labels automatically wrap to fit within package dimensions
 - **Black & White Printing Optimization** - Grayscale color scheme with distinct shading for different clients

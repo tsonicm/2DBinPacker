@@ -66,6 +66,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            padding: 0;
         }
 
         .section {
@@ -270,6 +271,68 @@
             }
         }
 
+        @media (max-width: 768px) {
+            body {
+                padding: var(--spacing-sm);
+            }
+
+            h1 {
+                font-size: 22px;
+                margin-bottom: var(--spacing-sm);
+            }
+
+            .layout {
+                gap: var(--spacing-sm);
+                height: calc(100vh - 80px);
+            }
+
+            .panel {
+                padding: var(--spacing-md);
+            }
+
+            .panel.fixed {
+                padding: 0;
+            }
+
+            .canvas-container {
+                min-height: 300px;
+            }
+
+            #canvasPlaceholder {
+                padding: var(--spacing-md) !important;
+                font-size: 14px !important;
+            }
+
+            #canvasPlaceholder svg {
+                width: 48px !important;
+                height: 48px !important;
+            }
+
+            #zoomControls {
+                bottom: 10px !important;
+                right: 10px !important;
+                padding: 8px !important;
+                gap: 6px !important;
+            }
+
+            .zoom-button {
+                padding: 6px 10px !important;
+                font-size: 12px !important;
+            }
+
+            .zoom-info {
+                min-width: 60px !important;
+            }
+
+            .zoom-info span {
+                font-size: 13px !important;
+            }
+
+            .zoom-info small {
+                font-size: 10px !important;
+            }
+        }
+
         .color-legend {
             font-size: 12px;
             margin-top: var(--spacing-md);
@@ -439,12 +502,26 @@
 
             <!-- Right Panel: Visualization -->
             <div class="panel fixed">
-                <h2 style="padding: 0 var(--spacing-lg); padding-top: var(--spacing-lg);">Packing Visualization</h2>
-                <div class="canvas-container" style="position: relative; flex: 1; overflow: hidden; padding: var(--spacing-lg);">
-                    <div class="canvas-wrapper" id="canvasWrapper" style="position: relative; width: 100%; height: 100%; overflow: hidden;">
+                <div class="canvas-container" style="position: relative; flex: 1; overflow: hidden;">
+                    <!-- Placeholder -->
+                    <div id="canvasPlaceholder" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: var(--color-text-secondary); font-size: 16px; text-align: center; padding: var(--spacing-lg);">
+                        <div>
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 16px; opacity: 0.5;">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <rect x="7" y="7" width="3" height="4"/>
+                                <rect x="12" y="7" width="5" height="3"/>
+                                <rect x="7" y="13" width="4" height="4"/>
+                                <rect x="13" y="11" width="4" height="6"/>
+                            </svg>
+                            <div style="font-weight: 500;">Visualization Area</div>
+                            <div style="font-size: 14px; margin-top: 8px; opacity: 0.7;">Add packages and click "Visualize Packing" to see the result</div>
+                        </div>
+                    </div>
+                    <!-- Canvas -->
+                    <div class="canvas-wrapper" id="canvasWrapper" style="position: relative; width: 100%; height: 100%; overflow: hidden; display: none;">
                         <canvas id="packingCanvas" style="display: block; width: 100%; height: 100%;"></canvas>
                     </div>
-                    <div class="zoom-controls" style="position: absolute; bottom: 20px; right: 20px; background: white; border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; z-index: 10; display: flex; gap: 8px; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <div id="zoomControls" class="zoom-controls" style="position: absolute; bottom: 20px; right: 20px; background: white; border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; z-index: 10; display: none; gap: 8px; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                         <button class="zoom-button" onclick="zoomOut()" style="padding: 8px 12px; background: var(--color-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">−</button>
                         <div class="zoom-info" style="text-align: center; min-width: 80px;">
                             <span id="zoomLevel" style="display: block; font-weight: 600;">100%</span>
@@ -1527,6 +1604,11 @@
                 return;
             }
 
+            // Hide placeholder and show canvas
+            document.getElementById('canvasPlaceholder').style.display = 'none';
+            document.getElementById('canvasWrapper').style.display = 'block';
+            document.getElementById('zoomControls').style.display = 'flex';
+
             packedPackages = packItems();
             selectedPackages = []; // Clear selection when repacking
             showRemainingSpace = false; // Reset the toggle
@@ -1940,6 +2022,11 @@
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Reset to placeholder view
+            document.getElementById('canvasPlaceholder').style.display = 'flex';
+            document.getElementById('canvasWrapper').style.display = 'none';
+            document.getElementById('zoomControls').style.display = 'none';
         }
 
         // Zoom functions
