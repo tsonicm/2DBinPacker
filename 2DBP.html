@@ -261,7 +261,8 @@
             color: var(--color-text-primary);
         }
 
-        @media (max-width: 1024px) {
+        /* Portrait orientation - stacked layout */
+        @media (orientation: portrait) {
             .layout {
                 grid-template-columns: 1fr;
             }
@@ -269,9 +270,7 @@
             .canvas-container {
                 min-height: 400px;
             }
-        }
 
-        @media (max-width: 768px) {
             body {
                 padding: var(--spacing-sm);
             }
@@ -299,8 +298,12 @@
             }
 
             #canvasPlaceholder {
-                padding: var(--spacing-md) !important;
                 font-size: 14px !important;
+            }
+
+            #canvasPlaceholder > div {
+                padding: var(--spacing-md) !important;
+                max-width: 300px !important;
             }
 
             #canvasPlaceholder svg {
@@ -330,6 +333,13 @@
 
             .zoom-info small {
                 font-size: 10px !important;
+            }
+        }
+
+        /* Landscape phones with limited height */
+        @media (orientation: landscape) and (max-height: 720px) {
+            .canvas-container {
+                min-height: 200px;
             }
         }
 
@@ -502,11 +512,11 @@
 
             <!-- Right Panel: Visualization -->
             <div class="panel fixed">
-                <div class="canvas-container" style="position: relative; flex: 1; overflow: hidden;">
+                <div class="canvas-container" style="position: relative; flex: 1; overflow: hidden; display: flex;">
                     <!-- Placeholder -->
-                    <div id="canvasPlaceholder" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: var(--color-text-secondary); font-size: 16px; text-align: center; padding: var(--spacing-lg);">
-                        <div>
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 16px; opacity: 0.5;">
+                    <div id="canvasPlaceholder" style="display: flex; align-items: center; justify-content: center; flex: 1; color: var(--color-text-secondary); font-size: 16px; text-align: center;">
+                        <div style="padding: var(--spacing-lg); max-width: 400px;">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 16px; opacity: 0.5; display: block;">
                                 <rect x="3" y="3" width="18" height="18" rx="2"/>
                                 <rect x="7" y="7" width="3" height="4"/>
                                 <rect x="12" y="7" width="5" height="3"/>
@@ -518,7 +528,7 @@
                         </div>
                     </div>
                     <!-- Canvas -->
-                    <div class="canvas-wrapper" id="canvasWrapper" style="position: relative; width: 100%; height: 100%; overflow: hidden; display: none;">
+                    <div class="canvas-wrapper" id="canvasWrapper" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; display: none;">
                         <canvas id="packingCanvas" style="display: block; width: 100%; height: 100%;"></canvas>
                     </div>
                     <div id="zoomControls" class="zoom-controls" style="position: absolute; bottom: 20px; right: 20px; background: white; border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; z-index: 10; display: none; gap: 8px; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
