@@ -337,10 +337,6 @@
                         <input type="number" id="packageWidth" min="0.1" step="0.1" placeholder="e.g., 30" />
                     </div>
                     <div class="form-group">
-                        <label for="packageComment">Comment (optional)</label>
-                        <input type="text" id="packageComment" placeholder="e.g., Fragile" />
-                    </div>
-                    <div class="form-group">
                         <label for="packageClient">Client (optional)</label>
                         <input type="text" id="packageClient" placeholder="e.g., Client A" />
                     </div>
@@ -348,8 +344,8 @@
                     <button class="button button-danger" onclick="clearPackages()">Clear All</button>
                     
                     <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--color-border);">
-                        <label for="bulkPackages">Bulk Insert (refNo [tab] LxW [tab] comment [tab] client)</label>
-                        <textarea id="bulkPackages" placeholder="123456&#9;50x30&#9;Fragile&#9;ClientA&#10;789012&#9;40*25&#9;&#9;ClientB&#10;345678&#9;60x35&#9;Heavy&#9;ClientA" style="width: 100%; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 13px; font-family: monospace; min-height: 80px; resize: vertical; margin-top: 4px;"></textarea>
+                        <label for="bulkPackages">Bulk Insert (refNo [tab] LxW [tab] client)</label>
+                        <textarea id="bulkPackages" placeholder="123456&#9;50x30&#9;ClientA&#10;789012&#9;40*25&#9;ClientB&#10;345678&#9;60x35&#9;ClientA" style="width: 100%; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 13px; font-family: monospace; min-height: 80px; resize: vertical; margin-top: 4px;"></textarea>
                         <button class="button button-primary" onclick="bulkAddPackages()" style="margin-top: 8px;">Add from List</button>
                     </div>
                 </div>
@@ -542,7 +538,6 @@
             const refNoInput = document.getElementById('packageRefNo').value;
             const length = parseFloat(document.getElementById('packageLength').value);
             const width = parseFloat(document.getElementById('packageWidth').value);
-            const comment = document.getElementById('packageComment').value.trim();
             const client = document.getElementById('packageClient').value.trim();
 
             if (!length || !width || length <= 0 || width <= 0) {
@@ -564,14 +559,12 @@
                 refNo: refNo,
                 length: length + lengthPadding,
                 width: width + widthPadding,
-                comment: comment,
                 client: client
             });
 
             document.getElementById('packageRefNo').value = '';
             document.getElementById('packageLength').value = '';
             document.getElementById('packageWidth').value = '';
-            document.getElementById('packageComment').value = '';
             document.getElementById('packageClient').value = '';
             updatePackageList();
             updateStatistics();
@@ -599,8 +592,7 @@
                 if (parts.length >= 2) {
                     const refNoInput = parts[0];
                     const dimString = parts[1];
-                    const comment = parts.length >= 3 ? parts[2] : '';
-                    const client = parts.length >= 4 ? parts[3].trim() : '';
+                    const client = parts.length >= 3 ? parts[2].trim() : '';
                     
                     // Parse dimensions (support x or *)
                     const dimMatch = dimString.match(/([\d.]+)\s*[x*]\s*([\d.]+)/i);
@@ -619,7 +611,6 @@
                                 refNo: refNo,
                                 length: length + lengthPadding,
                                 width: width + widthPadding,
-                                comment: comment,
                                 client: client
                             });
                             addedCount++;
@@ -641,7 +632,7 @@
             if (addedCount > 0) {
                 alert(`Added ${addedCount} package(s)` + (errorCount > 0 ? `. ${errorCount} line(s) had errors and were skipped.` : ''));
             } else if (errorCount > 0) {
-                alert('No valid packages found. Format: refNo [tab] LxW [tab] comment [tab] client (one per line)');
+                alert('No valid packages found. Format: refNo [tab] LxW [tab] client (one per line)');
             }
         }
 
@@ -658,9 +649,9 @@
             if (!pkg) return;
 
             // Create a formatted prompt with all fields
-            const currentValues = `RefNo: ${pkg.refNo}\nLength: ${pkg.length}\nWidth: ${pkg.width}\nComment: ${pkg.comment || ''}\nClient: ${pkg.client || ''}`;
-            const instructions = 'Edit package (format: refNo, length, width, comment, client)';
-            const defaultValue = `${pkg.refNo}, ${pkg.length}, ${pkg.width}, ${pkg.comment || ''}, ${pkg.client || ''}`;
+            const currentValues = `RefNo: ${pkg.refNo}\nLength: ${pkg.length}\nWidth: ${pkg.width}\nClient: ${pkg.client || ''}`;
+            const instructions = 'Edit package (format: refNo, length, width, client)';
+            const defaultValue = `${pkg.refNo}, ${pkg.length}, ${pkg.width}, ${pkg.client || ''}`;
             
             const input = prompt(`${instructions}\n\nCurrent values:\n${currentValues}\n\nEnter new values (comma-separated):`, defaultValue);
             
@@ -670,15 +661,14 @@
             const parts = input.split(',').map(p => p.trim());
             
             if (parts.length < 3) {
-                alert('Invalid format. Please enter: refNo, length, width, comment, client (comment and client are optional)');
+                alert('Invalid format. Please enter: refNo, length, width, client (client is optional)');
                 return;
             }
 
             const newRefNo = parts[0];
             const newLength = parts[1];
             const newWidth = parts[2];
-            const newComment = parts.length >= 4 ? parts[3].trim() : '';
-            const newClient = parts.length >= 5 ? parts.slice(4).join(',').trim() : '';
+            const newClient = parts.length >= 4 ? parts.slice(3).join(',').trim() : '';
 
             const formattedRefNo = formatRefNo(newRefNo);
             const parsedLength = parseFloat(newLength);
@@ -695,7 +685,6 @@
             pkg.refNo = formattedRefNo;
             pkg.length = parsedLength + lengthPadding;
             pkg.width = parsedWidth + widthPadding;
-            pkg.comment = newComment;
             pkg.client = newClient;
 
             updatePackageList();
@@ -730,7 +719,6 @@
                         <div class="package-info">
                             <div class="package-id">${pkg.refNo || 'N/A'}${pkg.client ? ` (${pkg.client})` : ''}</div>
                             <div class="package-dims">${Math.round(pkg.length)}×${Math.round(pkg.width)}</div>
-                            ${pkg.comment ? `<div class="package-dims" style="color: #3b82f6; margin-top: 2px;">${pkg.comment}</div>` : ''}
                         </div>
                     </div>
                     <div style="display: flex; gap: 4px;">
@@ -795,8 +783,7 @@
                     refNo: pkg.refNo,
                     w: pkg.length,
                     h: pkg.width,
-                    client: pkg.client,
-                    comment: pkg.comment
+                    client: pkg.client
                 });
             });
 
@@ -935,7 +922,6 @@
                             id: item.id,
                             refNo: item.refNo,
                             client: item.client,
-                            comment: item.comment,
                             x: bestPlacement.x,
                             y: bestPlacement.y,
                             w: bestPlacement.w,
@@ -2023,8 +2009,7 @@
                             y: position.y,
                             w: position.rotated ? pkg.width : pkg.length,
                             h: position.rotated ? pkg.length : pkg.width,
-                            client: pkg.client,
-                            comment: pkg.comment
+                            client: pkg.client
                         });
                         document.getElementById('packedCount').textContent = packedPackages.length;
                         drawPacking();
@@ -2610,7 +2595,7 @@
                     // Package text
                     doc.setTextColor(0);
                     const clientText = item.client ? ` [${item.client}]` : '';
-                    const text = `${item.refNo || '#' + item.id}${clientText}: ${Math.round(item.w)}×${Math.round(item.h)}${item.comment ? ' - ' + item.comment : ''}`;
+                    const text = `${item.refNo || '#' + item.id}${clientText}: ${Math.round(item.w)}×${Math.round(item.h)}`;
                     doc.text(text, x + 3, y, { maxWidth: columnWidth - 5 });
                 });
             }

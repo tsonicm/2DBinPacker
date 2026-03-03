@@ -29,7 +29,7 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
 
 ### Package Management
 - **Reference Number System** - Extracts last 6 digits from EAN13 barcodes (auto-trims leading zeros)
-- **Bulk Import** - Tab-separated format: `refNo [tab] LxW [tab] comment [tab] client`
+- **Bulk Import** - Tab-separated format: `refNo [tab] LxW [tab] client`
 - **Editable Packages** - Modify packages after adding them
 - **Smart Padding System** - Adds 3cm padding for sizes 77 and 117, 5cm for all other standard sizes (50, 60, 70, 90, 100, 110)
 - **Client Assignment** - Organize packages by client with 10-color palette
@@ -59,18 +59,18 @@ The 2D Bin Packing Visualizer is a single-file HTML application that helps you e
 1. Open `2D Bin Packing Visualizer.html` in any modern web browser
 2. Set your bin dimensions (width × height in cm)
 3. Add packages using one of three methods:
-   - **Manual Entry**: Fill in reference number, dimensions, comment, and client
+   - **Manual Entry**: Fill in reference number, dimensions, and client
    - **Bulk Import**: Paste tab-separated data in the format shown
    - **Edit Existing**: Modify packages after adding them
 4. Click "Visualize Packing" to see the optimized layout
 
 ### Bulk Import Format
 ```
-123456	240x120	Fragile	Client A
-234567	240x120	Heavy	Client B
-345678	150x100	Standard	Client A
+123456	240x120	Client A
+234567	240x120	Client B
+345678	150x100	Client A
 ```
-Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
+Format: `refNo [tab] lengthxwidth [tab] client`
 
 ### Interactive Controls
 - **Alt/Option + Click** - Place unpacked packages (shown below bin) into the bin automatically
@@ -88,26 +88,26 @@ Format: `refNo [tab] lengthxwidth [tab] comment [tab] client`
 
 ### Example Test Suite (1360×245 bin)
 ```
-123456	235x115	Fragile - Large	Client A
-234567	235x115	Heavy - Large	Client B
-345678	235x115	Standard	Client A
-456789	235x115	Express	Client B
-567890	145x95	Medium Box	Client A
-678901	145x95	Medium Heavy	Client B
-789012	145x95	Standard Med	Client A
-890123	145x95	Priority	Client B
-901234	115x75	Small Pallet	Client A
-012345	115x75	Quick Ship	Client B
-111111	115x75	Compact	Client A
-222222	115x75	Rush Order	Client B
-333333	75x55	Small Box A	Client A
-444444	75x55	Small Box B	Client B
-555555	75x55	Delicate	Client A
-666666	75x55	Standard S	Client B
-777777	55x35	Mini Pack	Client A
-888888	55x35	Tiny Box	Client B
-999999	235x35	Long Thin	Client A
-100000	145x55	Flat Pack	Client B
+123456	235x115	Client A
+234567	235x115	Client B
+345678	235x115	Client A
+456789	235x115	Client B
+567890	145x95	Client A
+678901	145x95	Client B
+789012	145x95	Client A
+890123	145x95	Client B
+901234	115x75	Client A
+012345	115x75	Client B
+111111	115x75	Client A
+222222	115x75	Client B
+333333	75x55	Client A
+444444	75x55	Client B
+555555	75x55	Client A
+666666	75x55	Client B
+777777	55x35	Client A
+888888	55x35	Client B
+999999	235x35	Client A
+100000	145x55	Client B
 ```
 
 ## 🛠️ Technical Details
